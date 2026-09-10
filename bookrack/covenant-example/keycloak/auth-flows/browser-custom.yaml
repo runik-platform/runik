@@ -1,0 +1,10 @@
+authenticationFlow:
+  key: browser-custom
+  builtIn: false
+  topLevel: false
+  providerId: basic-flow
+  authenticationExecutions:
+    - authenticator: auth-cookie
+      requirement: ALTERNATIVE
+      priority: 0
+      authenticatorFlow: false

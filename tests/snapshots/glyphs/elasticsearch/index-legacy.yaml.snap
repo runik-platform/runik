@@ -1,0 +1,94 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: elastic-infra-huly-search-rw
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: fulltext
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: fulltext
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: database
+  dBName: elastic-infra
+  creationStatements:
+    - '{"elasticsearch_role_definition":{"indices":[{"names":["huly-production","huly-production-*"],"privileges":["read","write","create_index","view_index_metadata"]}]}}'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: huly-search
+  labels:
+    app.kubernetes.io/name: fulltext
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: fulltext
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 30m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: database/creds/elastic-infra-huly-search-rw
+      authentication:
+        path: the-yaml-life
+        role: huly
+        serviceAccount:
+          name: huly
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: huly-search
+    labels:
+      app.kubernetes.io/name: fulltext
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: the-yaml-life
+      app.kubernetes.io/managed-by: Helm
+      spelbook: the-yaml-life
+      chapter: huly
+      spell: fulltext
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        HOST: "elastic-infra-es-http.elastic-infra.svc"
+        INDEX: "huly-production"
+        PORT: "9200"
+        SCHEME: "http"
+        URL: "http://elastic-infra-es-http.elastic-infra.svc:9200"
+    type: Opaque

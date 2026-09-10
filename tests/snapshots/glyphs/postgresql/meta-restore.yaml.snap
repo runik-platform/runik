@@ -1,0 +1,660 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hildy-from-archive
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  description: Restore of hildy from off-site archive
+
+  instances: 1
+
+  enableSuperuserAccess: true
+  bootstrap:
+    recovery:
+      source: "hildy-archive"
+      recoveryTarget:
+        targetTime: "2026-05-19 14:00:00.000000+00"
+  externalClusters:
+    - name: "hildy-archive"
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: hildy-from-archive-restore-src
+          serverName: "hildy-archive"
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: false
+      parameters:
+        barmanObjectName: hildy-from-archive
+
+  storage:
+    size: 10Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hildy-restored
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  description: Restore of hildy via convention
+
+  instances: 1
+
+  enableSuperuserAccess: true
+  bootstrap:
+    recovery:
+      source: "hildy"
+      recoveryTarget:
+        targetTime: "2026-05-19 14:00:00.000000+00"
+  externalClusters:
+    - name: "hildy"
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: hildy-restored-restore-src
+          serverName: "hildy"
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: false
+      parameters:
+        barmanObjectName: hildy-restored
+
+  storage:
+    size: 10Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hildy-from-archive-restore-src
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  configuration:
+    destinationPath: "s3://offsite-archive/hildy"
+    endpointURL: "https://s3.offsite.example.com"
+    s3Credentials:
+      accessKeyId:
+        name: hildy-archive-creds
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: hildy-archive-creds
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hildy-from-archive
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  configuration:
+    destinationPath: "s3://test-postgresql-databases-hildy-from-archive-backup/hildy-from-archive"
+    endpointURL: "http://seaweedfs-s3.seaweedfs.svc:8333"
+    s3Credentials:
+      accessKeyId:
+        name: hildy-from-archive-backup
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: hildy-from-archive-backup
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: "90d"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hildy-restored-restore-src
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  configuration:
+    destinationPath: "s3://test-postgresql-databases-hildy-backup/hildy"
+    endpointURL: "http://seaweedfs-s3.seaweedfs.svc:8333"
+    s3Credentials:
+      accessKeyId:
+        name: hildy-backup
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: hildy-backup
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hildy-restored
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  configuration:
+    destinationPath: "s3://test-postgresql-databases-hildy-restored-backup/hildy-restored"
+    endpointURL: "http://seaweedfs-s3.seaweedfs.svc:8333"
+    s3Credentials:
+      accessKeyId:
+        name: hildy-restored-backup
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: hildy-restored-backup
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: "90d"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-from-archive-backup-aws-access-key-id
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: test-postgresql
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/test-postgresql/databases/glyphs-release/publics/
+  secretKey: AWS_ACCESS_KEY_ID
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-from-archive-backup-aws-secret-access-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: test-postgresql
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/test-postgresql/databases/glyphs-release/publics/
+  secretKey: AWS_SECRET_ACCESS_KEY
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-restored-backup-aws-access-key-id
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: test-postgresql
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/test-postgresql/databases/glyphs-release/publics/
+  secretKey: AWS_ACCESS_KEY_ID
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-restored-backup-aws-secret-access-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: test-postgresql
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/test-postgresql/databases/glyphs-release/publics/
+  secretKey: AWS_SECRET_ACCESS_KEY
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: hildy-from-archive-daily
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  schedule: "0 0 3 * * *"
+  cluster:
+    name: hildy-from-archive
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  backupOwnerReference: self
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: hildy-restored-daily
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  schedule: "0 0 3 * * *"
+  cluster:
+    name: hildy-restored
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  backupOwnerReference: self
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-from-archive-backup
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-from-archive-backup-aws-access-key-id
+      authentication:
+        path: test-postgresql
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-from-archive-backup-aws-secret-access-key
+      authentication:
+        path: test-postgresql
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: hildy-from-archive-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-postgresql
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-postgresql
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        AWS_ENDPOINT: s3.int.the.yaml.life
+        AWS_ENDPOINTS: s3.int.the.yaml.life
+        AWS_REGION: us-east-1
+        S3_BUCKET: test-postgresql-databases-hildy-from-archive-backup
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-from-archive-backup
+  namespace: seaweedfs
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+    runik.ing/source-namespace: glyphs-release
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-from-archive-backup-aws-access-key-id
+      authentication:
+        path: test-postgresql
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-from-archive-backup-aws-secret-access-key
+      authentication:
+        path: test-postgresql
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: test-postgresql-databases-hildy-from-archive-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-postgresql
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-postgresql
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: test-postgresql-databases-hildy-from-archive-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+      runik.ing/source-namespace: glyphs-release
+    stringData:
+        BUCKETS: test-postgresql-databases-hildy-from-archive-backup
+        IDENTITY_NAME: test-postgresql-databases-hildy-from-archive-backup
+        PERMISSIONS: Admin
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-restored-backup
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-restored-backup-aws-access-key-id
+      authentication:
+        path: test-postgresql
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-restored-backup-aws-secret-access-key
+      authentication:
+        path: test-postgresql
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: hildy-restored-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-postgresql
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-postgresql
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        AWS_ENDPOINT: s3.int.the.yaml.life
+        AWS_ENDPOINTS: s3.int.the.yaml.life
+        AWS_REGION: us-east-1
+        S3_BUCKET: test-postgresql-databases-hildy-restored-backup
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-hildy-restored-backup
+  namespace: seaweedfs
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+    runik.ing/source-namespace: glyphs-release
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-restored-backup-aws-access-key-id
+      authentication:
+        path: test-postgresql
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/test-postgresql/databases/glyphs-release/publics/s3-identities-seaweedfs-hildy-restored-backup-aws-secret-access-key
+      authentication:
+        path: test-postgresql
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: test-postgresql-databases-hildy-restored-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-postgresql
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-postgresql
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: test-postgresql-databases-hildy-restored-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+      runik.ing/source-namespace: glyphs-release
+    stringData:
+        BUCKETS: test-postgresql-databases-hildy-restored-backup
+        IDENTITY_NAME: test-postgresql-databases-hildy-restored-backup
+        PERMISSIONS: Admin
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque

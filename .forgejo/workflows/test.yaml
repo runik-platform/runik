@@ -1,0 +1,54 @@
+name: Runik tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: docker.io/library/node@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553
+    timeout-minutes: 15
+    env:
+      HELM_VERSION: 3.20.2
+      HELM_SHA256: 258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea
+      YQ_VERSION: 3.4.3
+    steps:
+      - name: Install checkout dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            ca-certificates curl diffutils git jq make openssh-client python3 python3-venv ripgrep
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Check out repository and submodules
+        uses: https://data.forgejo.org/actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ssh-key: ${{ secrets.RUNIK_SUBMODULE_SSH_KEY }}
+          ssh-known-hosts: ${{ secrets.RUNIK_SUBMODULE_KNOWN_HOSTS }}
+          submodules: recursive
+
+      - name: Install pinned test toolchain
+        run: |
+          helm_archive="helm-v${HELM_VERSION}-linux-amd64.tar.gz"
+          curl --fail --location --silent --show-error \
+            --output "/tmp/${helm_archive}" \
+            "https://get.helm.sh/${helm_archive}"
+          echo "${HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check --strict
+          tar --extract --gzip --file "/tmp/${helm_archive}" --directory /tmp
+          install --mode 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+          python3 -m venv /opt/runik-yq
+          /opt/runik-yq/bin/pip install --disable-pip-version-check --no-cache-dir "yq==${YQ_VERSION}"
+          ln --symbolic --force /opt/runik-yq/bin/yq /usr/local/bin/yq
+          helm version --short
+          yq --version
+
+      - name: Run complete suite
+        run: make ci

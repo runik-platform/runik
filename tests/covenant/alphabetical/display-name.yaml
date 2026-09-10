@@ -1,0 +1,5 @@
+principal:
+  name: a0
+  resourceName: zzz-override
+  profile:
+    displayName: Zulu

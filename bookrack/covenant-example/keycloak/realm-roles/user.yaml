@@ -1,0 +1,4 @@
+realmRole:
+  key: user
+  description: Authenticated user
+

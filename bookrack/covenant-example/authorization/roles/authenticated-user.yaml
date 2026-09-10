@@ -1,0 +1,6 @@
+role:
+  key: authenticated-user
+  grants:
+    realmRoles:
+      - user
+

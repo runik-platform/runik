@@ -1,0 +1,49 @@
+name: cert-manager
+namespace: cert-manager
+repository: https://charts.jetstack.io
+chart: cert-manager
+revision: v1.21.1
+
+appParams:
+  skipCrds: true
+
+values:
+  crds:
+    enabled: true
+
+appendix:
+  lexicon:
+    letsencrypt-staging:
+      type: cert-issuer
+      issuerName: letsencrypt-staging
+      issuerType: aws
+      email: platform@example.test
+      labels:
+        environment: staging
+        scope: global
+        default: book
+
+glyphs:
+  cert-manager:
+    letsencrypt-staging:
+      type: clusterIssuer
+      enabled: true
+      nameOverride: letsencrypt-staging
+      issuerType: aws
+      email: platform@example.test
+      selectorLabels:
+        environment: staging
+        scope: global
+        default: book
+
+runes:
+  - name: external-dns
+    repository: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    revision: 1.21.1
+    values:
+      provider:
+        name: webhook
+      sources:
+        - service
+        - ingress

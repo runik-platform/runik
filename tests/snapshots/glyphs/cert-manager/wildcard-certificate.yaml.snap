@@ -1,0 +1,64 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+kind: Certificate
+apiVersion: cert-manager.io/v1
+metadata:
+  name: staging-tls-letsencrypt-staging-cert
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-platform
+    chapter: production
+    spell: kaster
+spec:
+  commonName: staging.platform.com
+  dnsNames:
+  - staging.platform.com
+  - '*.staging.platform.com'
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-staging
+  secretName: test-staging-tls-cert
+---
+# Source: kaster/templates/kaster.yaml
+kind: Certificate
+apiVersion: cert-manager.io/v1
+metadata:
+  name: wildcard-tls-letsencrypt-production-cert
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-platform
+    chapter: production
+    spell: kaster
+spec:
+  commonName: platform.com
+  dnsNames:
+  - platform.com
+  - '*.platform.com'
+  - api.platform.com
+  - admin.platform.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-production
+  secretName: test-wildcard-tls-cert

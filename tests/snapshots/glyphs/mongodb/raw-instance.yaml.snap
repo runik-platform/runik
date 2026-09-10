@@ -1,0 +1,47 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: raw-mongo
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: development
+    app.kubernetes.io/managed-by: Helm
+    spelbook: development
+    chapter: databases
+    spell: kaster
+spec:
+  backup:
+    enabled: false
+    image: percona/percona-backup-mongodb:2.15.0
+  crVersion: 1.23.0
+  image: percona/percona-server-mongodb:8.0.26-11
+  replsets:
+  - name: rs0
+    size: 1
+    volumeSpec:
+      persistentVolumeClaim:
+        resources:
+          requests:
+            storage: 5Gi
+  unsafeFlags:
+    replsetSize: true

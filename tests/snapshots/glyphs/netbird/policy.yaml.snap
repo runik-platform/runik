@@ -1,0 +1,49 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: application-access
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "application-access"
+  state: "present"
+  description: "Permit managed clients to reach application resources"
+  enabled: true
+  sourceGroupRefs:
+    - "application-users"
+  destinationGroupRefs:
+    - "application-resources"
+  sourcePostureCheckRefs:
+    - "managed-device"
+  rules:
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: https
+      ports:
+      - 443
+      protocol: tcp

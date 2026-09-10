@@ -1,0 +1,45 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClientScope
+metadata:
+  name: test-client-scope-roles
+  labels:
+    app.kubernetes.io/name: keycloak-basic-client-scope
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  name: roles
+  description: Client roles scope for role mapping
+  protocol: openid-connect
+  default: true
+  protocolMappers:
+    - name: client-roles-mapper
+      protocol: openid-connect
+      protocolMapper: oidc-usermodel-client-role-mapper
+      config:
+        "access.token.claim": "true"
+        "claim.name": "roles"
+        "id.token.claim": "true"
+        "multivalued": "true"
+        "userinfo.token.claim": "true"

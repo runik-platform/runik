@@ -1,0 +1,1082 @@
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-ed25519-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-ed25519-key-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating ed25519 keypair for test-ed25519-key..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/crypto-test/test/glyphs-release/publics/test-ed25519-key"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t ed25519 -f /tmp/key -N "" -C "Test Ed25519 key"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-dkim-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-key-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating ed25519 keypair for test-dkim-key..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/crypto-test/test/glyphs-release/publics/test-dkim-key"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t ed25519 -f /tmp/key -N "" -C "DKIM signing key for test.example.com"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test.example.com" \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", domain: $domain, created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test.example.com" \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", domain: $domain, created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-rsa-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-key-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating rsa keypair for test-rsa-key..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/crypto-test/test/glyphs-release/publics/test-rsa-key"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t rsa -b 4096 -f /tmp/key -N "" -C "Test RSA 4096 key"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-rsa-2048-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-2048-key-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating rsa keypair for test-rsa-2048-key..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/crypto-test/test/glyphs-release/publics/test-rsa-2048-key"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t rsa -b %!d(float64=2048) -f /tmp/key -N "" -C "Test RSA 2048 key"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-ssh-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-ssh-key-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating ed25519 keypair for test-ssh-key..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/crypto-test/test/glyphs-release/publics/test-ssh-key"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t ed25519 -f /tmp/key -N "" -C "deploy@automation"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-ed25519-key-keygen
+  labels:
+    app.kubernetes.io/name: test-ed25519-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-ed25519-key-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-ed25519-key-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: f14c54397afd06d59bfa6fdc983c4efe0a2acd0c2147e1feda626fe08097455f
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-ed25519-key-keygen-test-ed25519-key-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-dkim-key-keygen
+  labels:
+    app.kubernetes.io/name: test-dkim-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-key-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-dkim-key-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: f8d3154dec025377c7a9aa7c89ca258418b6b33da04e338b280f80e065c0867f
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-dkim-key-keygen-test-dkim-key-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-rsa-key-keygen
+  labels:
+    app.kubernetes.io/name: test-rsa-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-key-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-rsa-key-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: 11ea7d9dd2f866237c0cde8e52aa043f87b88d7ef97312a51ba7802215e924c4
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-rsa-key-keygen-test-rsa-key-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-rsa-2048-key-keygen
+  labels:
+    app.kubernetes.io/name: test-rsa-2048-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-2048-key-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-rsa-2048-key-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: 3d68183b58693feec844443155b7fb11fd43839c3708a18d3cf4b2bcc60d6041
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-rsa-2048-key-keygen-test-rsa-2048-key-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-ssh-key-keygen
+  labels:
+    app.kubernetes.io/name: test-ssh-key-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-ssh-key-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-ssh-key-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: 71155a4c494da0b6bab84c44fb99254b356d020f55fe0937f5b77925372ae8a3
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-ssh-key-keygen-test-ssh-key-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-ed25519-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: crypto-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: crypto-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/crypto-test/test/glyphs-release/publics/test-ed25519-key
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-ed25519-key
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-dkim-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: crypto-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: crypto-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/crypto-test/test/glyphs-release/publics/test-dkim-key
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-dkim-key
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+      domain: '{{ .secret.domain }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-rsa-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: crypto-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: crypto-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/crypto-test/test/glyphs-release/publics/test-rsa-key
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-rsa-key
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-rsa-2048-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: crypto-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: crypto-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/crypto-test/test/glyphs-release/publics/test-rsa-2048-key
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-rsa-2048-key
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-ssh-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: crypto-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: crypto-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/crypto-test/test/glyphs-release/publics/test-ssh-key
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-ssh-key
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+    type: Opaque

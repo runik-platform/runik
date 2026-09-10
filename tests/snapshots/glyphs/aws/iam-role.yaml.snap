@@ -1,0 +1,65 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: iam.services.k8s.aws/v1alpha1
+kind: Role
+metadata:
+  name: un-role
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  name: un-role
+  description: "test"
+  permissionsBoundary: arn:aws:iam::123456789012:policy/application-permissions-boundary
+  assumeRolePolicyDocument: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Federated": "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+            "StringEquals": {
+              "oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC:sub": [
+                "system:serviceaccount:glyphs-release:runik-un-role"
+              ],
+              "oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC:aud": "sts.amazonaws.com"
+            }
+          }
+        }
+      ]
+    }
+  policies: # usear runic indexer para traer las policies por selector
+    - iam-policy-secretsdasdadasdadsa
+    - iam-policy-s3sasasdas
+  tags:
+    - key: Name
+      value: un-role
+    - key: ManagedBy
+      value: ack-iam-controller
+    - key: Environment
+      value: development
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

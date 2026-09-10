@@ -1,0 +1,20 @@
+# These glyph examples currently render no Kubernetes resources through kaster.
+# Keeping the list explicit prevents a newly empty fixture from passing silently.
+argo-events/advanced-webhook-triggers.yaml
+argo-events/basic-github-webhook.yaml
+argo-events/multi-eventbus-selection.yaml
+argo-events/workflow-trigger.yaml
+aws/ack-ec2-controller.yaml
+aws/ack-kms-controller.yaml
+aws/ack-rds-controller.yaml
+aws/ack-s3-controller.yaml
+common/basic-labels.yaml
+common/labels-all-enabled.yaml
+common/labels-covenant-enabled.yaml
+common/labels-finops-enabled.yaml
+common/name-overrides.yaml
+summon/basic-service.yaml
+summon/loadbalancer-service.yaml
+summon/serviceaccount.yaml
+vault/lexicon.yaml
+vault/secrets.yaml

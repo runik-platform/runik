@@ -1,0 +1,217 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-my-data-aws-access-key-id
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: my-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: staging
+    spell: my-app
+    runik.ing/identity-name: the-yaml-life-staging-my-data
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: the-yaml-life
+    role: my-app
+    serviceAccount:
+      name: my-app
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/the-yaml-life/staging/glyphs-release/publics/
+  secretKey: AWS_ACCESS_KEY_ID
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-my-data-aws-secret-access-key
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: my-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: staging
+    spell: my-app
+    runik.ing/identity-name: the-yaml-life-staging-my-data
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: the-yaml-life
+    role: my-app
+    serviceAccount:
+      name: my-app
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/the-yaml-life/staging/glyphs-release/publics/
+  secretKey: AWS_SECRET_ACCESS_KEY
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-my-data
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: my-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: staging
+    spell: my-app
+    runik.ing/identity-name: the-yaml-life-staging-my-data
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-access-key-id
+      authentication:
+        path: the-yaml-life
+        role: my-app
+        serviceAccount:
+          name: my-app
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-secret-access-key
+      authentication:
+        path: the-yaml-life
+        role: my-app
+        serviceAccount:
+          name: my-app
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: my-data
+    labels:
+      app.kubernetes.io/name: my-app
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: the-yaml-life
+      app.kubernetes.io/managed-by: Helm
+      spelbook: the-yaml-life
+      chapter: staging
+      spell: my-app
+      runik.ing/identity-name: the-yaml-life-staging-my-data
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        AWS_ENDPOINT: https://s3-weed.the.yaml.life
+        AWS_ENDPOINTS: https://s3-weed.the.yaml.life
+        AWS_REGION: us-east-1
+        S3_BUCKET: the-yaml-life-staging-my-data
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-my-data
+  namespace: seaweedfs
+  labels:
+    app.kubernetes.io/name: my-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: staging
+    spell: my-app
+    runik.ing/identity-name: the-yaml-life-staging-my-data
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+    runik.ing/source-namespace: glyphs-release
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-access-key-id
+      authentication:
+        path: the-yaml-life
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-secret-access-key
+      authentication:
+        path: the-yaml-life
+        role: seaweedfs-s3-aggregator-pod
+        serviceAccount:
+          name: seaweedfs-s3-aggregator-pod
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: the-yaml-life-staging-my-data
+    labels:
+      app.kubernetes.io/name: my-app
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: the-yaml-life
+      app.kubernetes.io/managed-by: Helm
+      spelbook: the-yaml-life
+      chapter: staging
+      spell: my-app
+      runik.ing/identity-name: the-yaml-life-staging-my-data
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+      runik.ing/source-namespace: glyphs-release
+    stringData:
+        BUCKETS: the-yaml-life-staging-my-data
+        IDENTITY_NAME: the-yaml-life-staging-my-data
+        PERMISSIONS: Admin
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque

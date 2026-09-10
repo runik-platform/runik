@@ -1,0 +1,121 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-monitoring
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9090
+      protocol: TCP
+      name: port-9090
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-public
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      protocol: TCP
+      name: http
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: test
+      containers:
+        
+        - name: test-main
+          image: test:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "test"
+          
+            
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+            - name: admin
+              containerPort: 8081
+              protocol: TCP
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

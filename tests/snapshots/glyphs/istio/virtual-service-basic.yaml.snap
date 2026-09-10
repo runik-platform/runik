@@ -1,0 +1,49 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: test-external-gateway
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - app.myapp.com
+  gateways:
+    - istio-system/external-gateway
+  http:
+    - match:
+      - uri:
+          prefix: /api
+      route:
+        - destination:
+            host: test.glyphs-release.svc.cluster.local
+            port:
+              number: 8080
+    - match:
+      - uri:
+          prefix: /
+      route:
+        - destination:
+            host: test.glyphs-release.svc.cluster.local
+            port:
+              number: 80

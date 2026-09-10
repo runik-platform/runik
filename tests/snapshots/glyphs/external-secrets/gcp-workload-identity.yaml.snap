@@ -1,0 +1,102 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: gcp-secretmanager
+spec:
+  provider:
+    gcpsm:
+      projectID: my-gcp-project
+      auth:
+        workloadIdentity:
+          clusterLocation: us-central1
+          clusterName: my-gke-cluster
+          serviceAccountRef:
+            name: external-secrets-sa
+            namespace: external-secrets
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: app-secrets
+
+spec:
+  secretStoreRef:
+    name: gcp-secretmanager
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: app-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: default/default/publics/app-secrets
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: db-credentials
+
+spec:
+  secretStoreRef:
+    name: gcp-secretmanager
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: db-credentials
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: production/database
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: api-config
+
+spec:
+  secretStoreRef:
+    name: gcp-secretmanager
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: api-config
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: default/default/glyphs-release/publics/api-config

@@ -1,0 +1,43 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: test-git-internal-alias
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - "git.example.com"
+  location: MESH_INTERNAL
+  resolution: DNS
+  ports:
+    - number: 2222
+      name: 2222-tcp
+      protocol: TCP
+    - number: 443
+      name: 443-https
+      protocol: HTTPS
+  endpoints:
+    - address: git.git.svc.cluster.local
+  exportTo:
+    - "*"

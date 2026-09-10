@@ -1,0 +1,2 @@
+# IAM books compiled directly by Covenant, never rendered by Librarian.
+covenant-example

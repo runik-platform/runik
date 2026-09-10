@@ -1,0 +1,13 @@
+identityProvider:
+  key: github
+  alias: github
+  providerId: github
+  displayName: GitHub
+  enabled: true
+  trustEmail: false
+  storeToken: false
+  config:
+    clientId: example
+  credentials:
+    secretName: github-idp
+

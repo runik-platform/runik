@@ -1,0 +1,2 @@
+# Deployable application books scanned by Covenant for published IAM contracts.
+example-book

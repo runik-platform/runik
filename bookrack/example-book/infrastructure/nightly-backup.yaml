@@ -1,0 +1,17 @@
+name: nightly-backup
+namespace: operations
+
+image:
+  name: alpine
+  tag: "3.22"
+
+workload:
+  type: cronjob
+  schedule: "0 2 * * *"
+  restartPolicy: OnFailure
+
+service:
+  enabled: false
+
+command: [sh, -c]
+args: ["echo starting backup; date; echo backup complete"]

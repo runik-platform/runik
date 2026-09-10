@@ -1,0 +1,59 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: SetupKey
+metadata:
+  name: workloads
+  namespace: applications
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  name: "workloads"
+  ephemeral: true
+  allowExtraDnsLabels: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: SidecarProfile
+metadata:
+  name: application-peers
+  namespace: applications
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  setupKeyRef:
+    name: "workloads"
+  podSelector:
+    matchLabels:
+      netbird.io/peer: "true"
+  injectionMode: "Sidecar"
+  extraDNSLabels:
+    - applications

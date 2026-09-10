@@ -1,0 +1,172 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: split-role
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: default
+  policies:
+    - split-policy
+  # Periodic token (seconds): renewable indefinitely, never reaches a max_ttl, so
+  # vault-agent only ever renews and never re-authenticates. Use for consumers that
+  # capture the token once and cannot pick up a rotation (e.g. versity's
+  # --iam-vault-root-token, read at boot from the agent sink).
+  tokenPeriod: 3600
+  targetServiceAccounts:
+    - split-app
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: compatible-access
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: default
+  policies:
+    - compatible-access
+  targetServiceAccounts:
+    - compatible-app
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: split-policy
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  policy: |
+    path "transit/encrypt/split-app" {
+      capabilities = ["update"]
+    }
+    path "transit/decrypt/split-app" {
+      capabilities = ["update"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: compatible-access
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  policy: |
+    path "kv/data/default/default/compatible-access/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/metadata/default/default/compatible-access/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/data/default/default/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/default/default/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/default/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/default/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/default/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/default/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }

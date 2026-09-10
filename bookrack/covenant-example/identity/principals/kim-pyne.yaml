@@ -1,0 +1,8 @@
+principal:
+  name: kim
+  lastName: pyne
+  profile:
+    displayName: Kim Pyne
+  memberOf:
+    - engineering
+

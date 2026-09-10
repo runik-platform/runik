@@ -1,0 +1,127 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBInstance
+metadata:
+  name: dev-postgres
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  dbInstanceIdentifier: dev-postgres
+  dbInstanceClass: db.t3.micro
+  engine: postgres
+  engineVersion: "15"
+
+  # Storage configuration
+  allocatedStorage: 20
+  storageType: gp3
+  storageEncrypted: false
+
+  # Master credentials
+  masterUsername: postgres
+  masterUserPassword:
+    name: rds-postgres-secret
+    key: password
+
+  # Database name
+  dbName: myapp_dev
+
+  # Networking - Subnet Group
+  dbSubnetGroupName: dev-subnets
+
+  # Parameter Group
+  dbParameterGroupName: dev-params
+
+  # Security Groups
+  vpcSecurityGroupIDs:
+    - sg-123456
+
+  publiclyAccessible: false
+  port: 5432
+
+  # High availability
+  multiAZ: false
+
+  # Backup configuration
+  copyTagsToSnapshot: false
+
+  # Updates and maintenance
+  autoMinorVersionUpgrade: false
+  deletionProtection: false
+
+  # Performance Insights
+
+  # Monitoring
+
+  # Tags
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBParameterGroup
+metadata:
+  name: dev-params
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+  annotations:
+    services.k8s.aws/adoption-policy: adopt
+spec:
+  name: dev-params
+  description: "Parameter group for dev-params"
+  family: postgres15
+  parameterOverrides:
+    max_connections: "200"
+    shared_buffers: "256MB"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBSubnetGroup
+metadata:
+  name: dev-subnets
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+  annotations:
+    services.k8s.aws/adoption-policy: adopt
+spec:
+  name: dev-subnets
+  description: "Development subnet group"
+  
+  subnetIDs:
+    - subnet-abc123
+    - subnet-def456

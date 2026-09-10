@@ -1,0 +1,125 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-external-source
+  labels:
+    app.kubernetes.io/name: argo-events-github-external
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - name: webhook
+      port: 12000
+      targetPort: 12000
+      protocol: TCP
+  selector:
+    eventsource-name: github-external-source
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-external-source
+  labels:
+    app.kubernetes.io/name: argo-events-github-external
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: production-eventbus
+  github:
+    runik-repo:
+      owner: runik-platform
+      repository: runik-platform
+      webhook:
+        endpoint: /github
+        port: "12000"
+      events:
+        - push
+        - pull_request
+        - release
+      auth:
+        token:
+          secretRef:
+            name: github-access
+            key: token
+      webhookSecret:
+        secretRef:
+          name: github-access
+          key: secret
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github-workflow-sensor
+  labels:
+    app.kubernetes.io/name: argo-events-github-external
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: production-eventbus
+  dependencies:
+    
+    - name: github-push-main
+      eventSourceName: github-external-source
+      eventName: runik-repo
+      filters:
+        exprs:
+          - expr: revision == "refs/heads/main"
+            fields:
+              - name: revision
+                path: body.ref
+  triggers:
+    - template:
+        name: trigger-ci-workflow
+        log:
+          intervalSeconds: 1
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: argo-events-github-external-webhook-gateway
+  labels:
+    app.kubernetes.io/name: argo-events-github-external
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - webhooks.the.yaml.life
+  gateways:
+    - istio-system/public-gateway
+  http:
+    - match:
+      - uri:
+          prefix: /github
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: github-external-source.glyphs-release.svc.cluster.local
+            port:
+              number: 12000

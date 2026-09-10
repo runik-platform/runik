@@ -1,0 +1,197 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: deployment-multi-filter-source
+  labels:
+    app.kubernetes.io/name: resource-deployment-multi-filter
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    deployment-monitoring:
+      namespace: default
+      group: apps
+      version: v1
+      resource: deployments
+      eventTypes:
+        - UPDATE
+      filter:
+        labels:
+          - key: app
+            operation: =
+            value: "web-app"
+          - key: tier
+            operation: =
+            value: "frontend"
+          - key: environment
+            operation: in
+            value: "production,staging"
+        expression: |
+          has(body.metadata.annotations) &&
+          has(body.metadata.annotations['runik.ing/action']) &&
+          (body.metadata.annotations['runik.ing/action'] == 'restart' ||
+           body.metadata.annotations['runik.ing/action'] == 'scale')
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: deployment-restart-sensor
+  labels:
+    app.kubernetes.io/name: resource-deployment-multi-filter
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: deployment-operator
+  dependencies:
+    
+    - name: deployment-restart-event
+      eventSourceName: deployment-multi-filter-source
+      eventName: deployment-monitoring
+      filters:
+        data:
+          - path: body.metadata.annotations.runik\.io/action
+            type: string
+            value:
+              - restart
+  triggers:
+    - template:
+        name: restart-deployment
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: restart-deployment-
+                namespace: default
+              spec:
+                arguments:
+                  parameters:
+                  - name: deployment-name
+                    value: default-deployment
+                  - name: deployment-namespace
+                    value: default
+                entrypoint: restart
+                serviceAccountName: deployment-operator
+                templates:
+                - container:
+                    args:
+                    - |
+                      echo "Restarting deployment {{workflow.parameters.deployment-name}} in namespace {{workflow.parameters.deployment-namespace}}"
+                      kubectl rollout restart deployment/{{workflow.parameters.deployment-name}} -n {{workflow.parameters.deployment-namespace}}
+                    command:
+                    - sh
+                    - -c
+                    image: bitnami/kubectl:latest
+                  name: restart
+          
+          parameters:
+            - src:
+                dependencyName: deployment-restart-event
+                dataKey: body.metadata.name
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: deployment-restart-event
+                dataKey: body.metadata.namespace
+              dest: spec.arguments.parameters.1.value
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: deployment-scale-sensor
+  labels:
+    app.kubernetes.io/name: resource-deployment-multi-filter
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: deployment-operator
+  dependencies:
+    
+    - name: deployment-scale-event
+      eventSourceName: deployment-multi-filter-source
+      eventName: deployment-monitoring
+      filters:
+        data:
+          - path: body.metadata.annotations.runik\.io/action
+            type: string
+            value:
+              - scale
+  triggers:
+    - template:
+        name: scale-deployment
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: scale-deployment-
+                namespace: default
+              spec:
+                arguments:
+                  parameters:
+                  - name: deployment-name
+                    value: default-deployment
+                  - name: deployment-namespace
+                    value: default
+                  - name: replicas
+                    value: "3"
+                entrypoint: scale
+                serviceAccountName: deployment-operator
+                templates:
+                - container:
+                    args:
+                    - |
+                      echo "Scaling deployment {{workflow.parameters.deployment-name}} to {{workflow.parameters.replicas}} replicas"
+                      kubectl scale deployment/{{workflow.parameters.deployment-name}} \
+                        --replicas={{workflow.parameters.replicas}} \
+                        -n {{workflow.parameters.deployment-namespace}}
+                    command:
+                    - sh
+                    - -c
+                    image: bitnami/kubectl:latest
+                  name: scale
+          
+          parameters:
+            - src:
+                dependencyName: deployment-scale-event
+                dataKey: body.metadata.name
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: deployment-scale-event
+                dataKey: body.metadata.namespace
+              dest: spec.arguments.parameters.1.value
+            - src:
+                dependencyName: deployment-scale-event
+                dataKey: body.metadata.annotations.runik\.io/replicas
+              dest: spec.arguments.parameters.2.value

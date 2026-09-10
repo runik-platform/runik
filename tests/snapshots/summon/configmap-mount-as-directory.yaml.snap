@@ -1,0 +1,89 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-mount-as-directory
+  labels:
+    app.kubernetes.io/name: app-mount-as-directory
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-mount-as-directory
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-mount-as-directory
+  labels:
+    app.kubernetes.io/name: app-mount-as-directory
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-mount-as-directory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: app-mount-as-directory
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: app-mount-as-directory
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-app-config: d1d5e8121d1620ac5af6d15906017c359991f5b2218358638d5f00f8a3f8710b
+    spec:
+      serviceAccountName: app-mount-as-directory
+      containers:
+        
+        - name: app-mount-as-directory-app-mount-as-directory
+          image: nginx/app-mount-as-directory:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          volumeMounts:
+          
+            - name: config-yaml
+              
+              mountPath: /etc/app
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "app-mount-as-directory"
+          
+      
+      volumes:
+      
+        - name: config-yaml
+          configMap:
+            name: config-yaml
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

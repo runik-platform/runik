@@ -1,0 +1,87 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhook-source
+  labels:
+    app.kubernetes.io/name: runic-indexer-pattern-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: test-eventbus
+  webhook:
+    test:
+      endpoint: /test
+      port: "12000"
+      method: POST
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: workflow-sensor
+  labels:
+    app.kubernetes.io/name: runic-indexer-pattern-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    purpose: test-automation
+spec:
+  eventBusName: test-eventbus
+  template:
+    serviceAccountName: test-sa
+  dependencies:
+    - name: test-trigger
+      eventSourceName: test-webhook
+      eventName: test-webhook
+      filters:
+        data:
+        - path: body.action
+          type: string
+          value:
+            - "test"
+          comparator: =
+  triggers:
+    - template:
+        name: test-trigger
+        conditions: "test-trigger"
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: test-workflow-template-
+                namespace: workflows
+              spec:
+                workflowTemplateRef:
+                  name: test-workflow-template
+                arguments:
+                  parameters:
+                    - name: revision
+                      value: ""
+          
+          parameters:
+            - src:
+                dependencyName: test-trigger
+                dataKey: body.revision
+              dest: spec.arguments.parameters.0.value

@@ -1,0 +1,51 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+data:
+  api-key: bXktc2VjcmV0LWFwaS1rZXk=
+  webhook-secret: d2ViaG9vay1zZWNyZXQtdmFsdWU=
+kind: Secret
+metadata:
+  labels:
+    app: my-app
+  name: app-secrets
+type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+data:
+  app.properties: |
+    database.host=postgres.production.svc.cluster.local
+    database.port=5432
+    cache.enabled=true
+    log.level=info
+  features.json: |
+    {
+      "feature_flags": {
+        "new_ui": true,
+        "beta_features": false,
+        "analytics": true
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app: my-app
+    environment: production
+  name: app-configuration
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

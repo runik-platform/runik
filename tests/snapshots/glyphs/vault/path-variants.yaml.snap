@@ -1,0 +1,192 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: book-level-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/publics/book-level-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: book-level-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        username: '{{ .secret.username }}'
+        password: '{{ .secret.password }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: chapter-level-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/publics/chapter-level-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: chapter-level-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        api-key: '{{ .secret.api-key }}'
+        token: '{{ .secret.token }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: absolute-path-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/shared/credentials
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: absolute-path-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        database-url: '{{ .secret.database-url }}'
+        redis-url: '{{ .secret.redis-url }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: summon-level-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/summon-level-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: summon-level-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        service-key: '{{ .secret.service-key }}'
+        endpoint: '{{ .secret.endpoint }}'
+    type: Opaque

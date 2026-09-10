@@ -1,0 +1,296 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-with-runic-csi
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: app-with-runic-csi-downloads
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+    volume: downloads
+spec:
+  storageClassName: "s3-shared"
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: media/downloads
+    
+    volumeAttributes:
+      mounter: "geesefs"
+      options: "--memory-limit 1000 --dir-mode 0777 --file-mode 0666"
+    
+    nodeStageSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    nodePublishSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    controllerPublishSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: app-with-runic-csi-manual-config
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+    volume: manual-config
+spec:
+  storageClassName: "s3-shared"
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: media/manual
+    
+    volumeAttributes:
+      custom: "value"
+      mounter: "s3fs"
+      options: "--memory-limit 1000 --dir-mode 0777 --file-mode 0666"
+    
+    nodeStageSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    nodePublishSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    controllerPublishSecretRef:
+      name: custom-secret
+      namespace: default
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: app-with-runic-csi-series
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+    volume: series
+spec:
+  storageClassName: "s3-shared"
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: media/series
+    
+    volumeAttributes:
+      custom-option: "custom-value"
+      mounter: "geesefs"
+      options: "--memory-limit 1000 --dir-mode 0777 --file-mode 0666"
+    
+    nodeStageSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    nodePublishSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+    controllerPublishSecretRef:
+      name: csi-s3-secret
+      namespace: kube-system
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-with-runic-csi-downloads
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+spec:
+  
+  volumeName: app-with-runic-csi-downloads
+  
+  storageClassName: "s3-shared"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-with-runic-csi-manual-config
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+spec:
+  
+  volumeName: app-with-runic-csi-manual-config
+  
+  storageClassName: "s3-shared"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-with-runic-csi-series
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+spec:
+  
+  volumeName: app-with-runic-csi-series
+  
+  storageClassName: "s3-shared"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-with-runic-csi
+  labels:
+    app.kubernetes.io/name: app-with-runic-csi
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-runic-csi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: app-with-runic-csi
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: app-with-runic-csi
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: app-with-runic-csi
+      containers:
+        
+        - name: app-with-runic-csi-app-with-runic-csi
+          image: nginx/app-with-runic-csi:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          volumeMounts:
+          
+            - name: downloads
+              mountPath: /downloads
+            - name: manual-config
+              mountPath: /manual
+            - name: series
+              mountPath: /series
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "app-with-runic-csi"
+          
+      
+      volumes:
+      
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: app-with-runic-csi-downloads
+        - name: manual-config
+          persistentVolumeClaim:
+            claimName: app-with-runic-csi-manual-config
+        - name: series
+          persistentVolumeClaim:
+            claimName: app-with-runic-csi-series
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

@@ -1,0 +1,17 @@
+name: public
+namespace: applications
+
+image:
+  tag: v1.0.0
+
+service:
+  external: true
+  prefix: /
+
+covenant:
+  clients:
+    example:
+      webUrl: https://public.example.test
+      redirectUris:
+        - https://public.example.test/callback
+      public: true

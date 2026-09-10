@@ -1,0 +1,55 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmRole
+metadata:
+  name: test-role-developer
+  labels:
+    app.kubernetes.io/name: keycloak-basic-realm-role
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  name: developer
+  description: Developer role with access to dev resources
+  composite: false
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmRole
+metadata:
+  name: test-role-admin
+  labels:
+    app.kubernetes.io/name: keycloak-basic-realm-role
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  name: admin
+  description: Administrator role with full access
+  composite: true
+  composites:
+    - name: developer
+    - name: user-manager

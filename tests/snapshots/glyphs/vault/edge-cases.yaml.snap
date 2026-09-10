@@ -1,0 +1,485 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: no-keys-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  isKVSecretsEngineV2: true
+  path: kv/data/default/default/glyphs-release/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: random-special-chars
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  isKVSecretsEngineV2: true
+  path: kv/data/default/default/glyphs-release/publics/
+  secretKey: master.password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: format-no-keys-json
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  isKVSecretsEngineV2: true
+  path: kv/data/default/default/glyphs-release/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: format-no-keys-yaml
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  authentication:
+    path: k8s-path-auth
+    role: test
+    serviceAccount:
+      name: test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  isKVSecretsEngineV2: true
+  path: kv/data/default/default/glyphs-release/publics/
+  secretKey: secure-token
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: special-chars-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/special-chars-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: special-chars-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        API_KEY: '{{ .secret.api-key }}'
+        DATABASE.HOST: '{{ .secret.database.host }}'
+        SERVICE_PORT: '{{ .secret.service-port }}'
+        JWT_TOKEN: '{{ .secret.jwt_token }}'
+        SPECIAL_VALUE: with-dashes
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: no-keys-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/no-keys-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: no-keys-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        only-static: data
+        password: '{{ .secret.password }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: static-only-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/static-only-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: static-only-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        CONNECTION_POOL_SIZE: 20
+        DATABASE_TYPE: postgres
+        MAX_CONNECTIONS: 100
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: complex-path-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/applications/web-app/prod
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: complex-path-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        config: '{{ .secret.config }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: minimal-secret
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/minimal-secret
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: minimal-secret
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+        value: '{{ .secret.value }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: random-special-chars
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/random-special-chars
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: random-special-chars
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        CLIENT_ID: '{{ .secret.client-id }}'
+        AUTH_TYPE: oauth2
+        MASTER.PASSWORD: '{{ .secret.master.password }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: format-no-keys-json
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/format-no-keys-json
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: format-no-keys-json
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+      full-config: '{{ .secret | toJson  }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: format-no-keys-yaml
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/default/default/glyphs-release/publics/format-no-keys-yaml
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: format-no-keys-yaml
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: default
+      app.kubernetes.io/managed-by: Helm
+      spelbook: default
+      chapter: default
+      spell: kaster
+    stringData:
+      settings: '{{ .secret | toYaml  }}'
+    type: Opaque

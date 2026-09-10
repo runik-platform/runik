@@ -1,0 +1,181 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: billing-client-events-clients-ca-cert
+  namespace: messaging
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  commonName: billing-client
+  issuerRef:
+    name: events-clients-ca
+    kind: ClusterIssuer
+  secretName: billing-client-tls
+  usages:
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: audit-writer
+  namespace: messaging
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  authentication:
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: PASSWORD
+          name: audit-writer-password
+    type: scram-sha-512
+  authorization:
+    acls:
+    - operations:
+      - Create
+      - Describe
+      - Write
+      resource:
+        name: audit-events
+        patternType: literal
+        type: topic
+    type: simple
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: billing-client
+  namespace: messaging
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  authentication:
+    type: tls-external
+  authorization:
+    acls:
+    - operations:
+      - Describe
+      - Read
+      - Write
+      resource:
+        name: billing-events
+        patternType: literal
+        type: topic
+    type: simple
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: audit-writer-password
+  namespace: messaging
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  authentication:
+    path: example
+    role: kafka-secrets
+    serviceAccount:
+      name: kafka-secrets
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: secrets//data/example/applications/glyphs-release/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: audit-writer-password
+  namespace: messaging
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secrets//data/example/applications/glyphs-release/publics/audit-writer-password
+      authentication:
+        path: example
+        role: kafka-secrets
+        serviceAccount:
+          name: kafka-secrets
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: audit-writer-password
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: example
+      app.kubernetes.io/managed-by: Helm
+      spelbook: example
+      chapter: applications
+      spell: kaster
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        PASSWORD: '{{ .secret.password }}'
+    type: Opaque

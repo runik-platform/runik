@@ -1,0 +1,52 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: external-billing-api
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    finops/service: external-billing
+spec:
+  hosts:
+    - "billing.example.com"
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  addresses:
+    - 198.51.100.10
+    - 198.51.100.11
+  ports:
+    - number: 443
+      name: https
+      protocol: HTTPS
+  endpoints:
+    - address: 198.51.100.10
+      locality: us-east-1/zone-a
+      weight: 80
+    - address: 198.51.100.11
+      locality: us-east-1/zone-b
+      weight: 20
+  subjectAltNames:
+    - billing.example.com
+  exportTo:
+    - "."

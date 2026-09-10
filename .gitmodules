@@ -1,0 +1,28 @@
+[submodule "librarian"]
+	path = librarian
+	url = https://github.com/runik-platform/librarian.git
+	branch = upstream
+[submodule "covenant"]
+	path = covenant
+	url = https://github.com/runik-platform/covenant.git
+	branch = upstream
+[submodule "charts/summon"]
+	path = charts/summon
+	url = https://github.com/runik-platform/summon.git
+	branch = upstream
+[submodule "charts/kaster"]
+	path = charts/kaster
+	url = https://github.com/runik-platform/kaster.git
+	branch = upstream
+[submodule "charts/glyphs"]
+	path = charts/glyphs
+	url = https://github.com/runik-platform/glyphs.git
+	branch = upstream
+[submodule "charts/trinkets/tarot"]
+	path = charts/trinkets/tarot
+	url = https://github.com/runik-platform/tarot.git
+	branch = upstream
+[submodule "charts/trinkets/microspell"]
+	path = charts/trinkets/microspell
+	url = https://github.com/runik-platform/microspell.git
+	branch = upstream

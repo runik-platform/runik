@@ -1,0 +1,54 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdAccountSettings
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  dnsDomain: "netbird.corp"
+  networkRange: "100.64.0.0/16"
+  groupsPropagationEnabled: true
+  lazyConnectionEnabled: true
+  regularUsersViewBlocked: false
+  peerLoginExpiration:
+    enabled: true
+    seconds: 2592000
+  jwtGroups:
+    allowGroups:
+    - admins
+    claimName: groups
+    enabled: true
+  extra:
+    networkTrafficLogsEnabled: true
+    peerApprovalEnabled: true
+    userApprovalRequired: false
+    networkTrafficLogsGroupRefs:
+      - "audited"
+  peerExpose:
+    enabled: true
+    groupRefs:
+      - "admins"

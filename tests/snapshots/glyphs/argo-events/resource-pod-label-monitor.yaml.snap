@@ -1,0 +1,76 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: pod-label-source
+  labels:
+    app.kubernetes.io/name: resource-pod-label-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    pod-monitoring:
+      namespace: default
+      version: v1
+      resource: pods
+      eventTypes:
+        - ADD
+        - UPDATE
+      filter:
+        labels:
+          - key: app
+            operation: =
+            value: "critical-service"
+          - key: environment
+            operation: =
+            value: "production"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: pod-label-sensor
+  labels:
+    app.kubernetes.io/name: resource-pod-label-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: resource-monitor
+  dependencies:
+    
+    - name: pod-event
+      eventSourceName: pod-label-source
+      eventName: pod-monitoring
+      filters:
+        data:
+          - path: body.metadata.labels.app
+            type: string
+            value:
+              - critical-service
+  triggers:
+    - template:
+        name: log-pod-change
+        log:
+          intervalSeconds: 1

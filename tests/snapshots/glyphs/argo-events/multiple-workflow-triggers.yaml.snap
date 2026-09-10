@@ -1,0 +1,85 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: workflow-sensor
+  labels:
+    app.kubernetes.io/name: multiple-workflow-triggers
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+    purpose: workflow-execution
+spec:
+  eventBusName: automation-eventbus
+  template:
+    serviceAccountName: workflow-sensor
+  dependencies:
+    - name: bootstrap-trigger
+      eventSourceName: forgejo-source
+      eventName: forgejo
+      filters:
+        exprs:
+        - expr: event_type == "repository" && action == "created"
+          fields:
+          - name: event_type
+            path: header.X-Gitea-Event.0
+          - name: action
+            path: body.action
+    - name: build-trigger
+      eventSourceName: forgejo-source
+      eventName: forgejo
+      filters:
+        exprs:
+        - expr: event_type == "push"
+          fields:
+          - name: event_type
+            path: header.X-Gitea-Event.0
+  triggers:
+    - template:
+        name: bootstrap-trigger
+        conditions: "bootstrap-trigger"
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: bootstrap-reading-
+                namespace: bootstrap
+              spec:
+                workflowTemplateRef:
+                  name: bootstrap-reading
+          
+    - template:
+        name: build-trigger
+        conditions: "build-trigger"
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: build-reading-
+                namespace: builds
+              spec:
+                workflowTemplateRef:
+                  name: build-reading

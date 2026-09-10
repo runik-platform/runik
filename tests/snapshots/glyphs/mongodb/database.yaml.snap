@@ -1,0 +1,229 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: orders
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  authentication:
+    path: platform
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: platform
+  policies:
+    - orders
+  targetServiceAccounts:
+    - orders
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: mongodb.example.io/v1alpha1
+kind: MongoDBDatabase
+metadata:
+  name: orders
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  engineRef:
+    name: mongo-main
+  databaseName: "orders"
+  deletionPolicy: Retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: mongodb.example.io/v1alpha1
+kind: MongoDBUser
+metadata:
+  name: orders
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  databaseRef:
+    name: orders
+  credentialsSecretRef:
+    name: orders
+    usernameKey: USERNAME
+    passwordKey: PASSWORD
+  access: readWrite
+  credentialsRevision: "1"
+  deletionPolicy: Delete
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: orders
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  authentication:
+    path: platform
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "kv/data/platform/applications/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/metadata/platform/applications/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/data/platform/applications/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/applications/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/platform/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/platform/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: orders-1
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  authentication:
+    path: platform
+    role: orders
+    serviceAccount:
+      name: orders
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  kvSecretRetainPolicy: Retain
+  path: kv/data/platform/applications/glyphs-release/publics/
+  secretKey: PASSWORD
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: orders-1
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: applications
+    spell: orders
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/platform/applications/glyphs-release/publics/orders-1
+      authentication:
+        path: platform
+        role: orders
+        serviceAccount:
+          name: orders
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: orders
+    labels:
+      app.kubernetes.io/name: orders
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: platform
+      app.kubernetes.io/managed-by: Helm
+      spelbook: platform
+      chapter: applications
+      spell: orders
+    stringData:
+        USERNAME: orders
+        AUTH_DATABASE: "orders"
+        DATABASE: "orders"
+        HOST: "mongo-main-rs0.databases.svc.cluster.local"
+        PORT: "27017"
+        REPLICA_SET: "rs0"
+        TLS: "true"
+        PASSWORD: '{{ index .secret "PASSWORD" }}'
+    type: Opaque

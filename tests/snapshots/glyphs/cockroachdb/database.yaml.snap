@@ -1,0 +1,280 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: hildy-crdb-main
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  authentication:
+    path: test-book
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - hildy
+  connectionURL: postgresql://{{username}}:{{password}}@crdb-main-public.cockroachdb.svc:26257/defaultdb?sslmode=require
+  passwordAuthentication: "password"
+  rootCredentials:
+    secret:
+      name: crdb-main-vault-manager-root
+    passwordKey: password
+    usernameKey: username
+  path: db/test-book/living-the-life/hildy
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: hildy
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+spec:
+  authentication:
+    path: test-book
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: db/test-book/living-the-life/hildy
+  dBName: hildy-crdb-main
+  creationStatements:
+    - CREATE DATABASE IF NOT EXISTS "hildy";
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+    - GRANT ALL ON DATABASE "hildy" TO "{{name}}";
+  revocationStatements:
+    - REVOKE ALL ON DATABASE "hildy" FROM "{{name}}";
+    - DROP ROLE IF EXISTS "{{name}}";
+  renewStatements:
+    - ALTER ROLE "{{name}}" VALID UNTIL '{{expiration}}';
+  defaultTTL: 1h
+  maxTTL: 24h
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: hildy
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  authentication:
+    path: test-book
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - hildy
+  targetServiceAccounts:
+    - hildy
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: hildy
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  authentication:
+    path: test-book
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/living-the-life/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/living-the-life/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/living-the-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/living-the-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "db/test-book/living-the-life/hildy/creds/*" {
+      capabilities = ["read"]
+    }
+    path "db/test-book/living-the-life/hildy/static-creds/*" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts/db/test-book/living-the-life/hildy" {
+      capabilities = ["create","read","update","delete"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: hildy
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  authentication:
+    path: test-book
+    role: hildy
+    serviceAccount:
+      name: hildy
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  type: database
+  path: db/test-book/living-the-life
+  description: "Runik database credentials for test-book/living-the-life/hildy"
+  config:
+    listingVisibility: hidden
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: hildy
+  labels:
+    app.kubernetes.io/name: hildy
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: living-the-life
+    spell: hildy
+  annotations:
+    runik.ing/cockroachdb-cluster: crdb-main
+spec:
+  refreshThreshold: 80
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: db/test-book/living-the-life/hildy/creds/hildy
+      authentication:
+        path: test-book
+        role: hildy
+        serviceAccount:
+          name: hildy
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: hildy
+    labels:
+      app.kubernetes.io/name: hildy
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: living-the-life
+      spell: hildy
+    annotations:
+      runik.ing/cockroachdb-cluster: crdb-main
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        DATABASE: hildy
+        DBNAME: hildy
+        HOST: crdb-main-public.cockroachdb.svc
+        PORT: "26257"
+        SSLMODE: require
+    type: Opaque

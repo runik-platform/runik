@@ -1,0 +1,614 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-s3-aggregator
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-s3-aggregator-pod
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-s3-aggregator-script
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+data:
+  aggregator.sh: |
+    #!/bin/sh
+    set -u
+    ADMIN="${ADMIN_ENDPOINT}"
+    BUCKETS_ROOT="${BUCKETS_ROOT}"
+    SA=/var/run/secrets/kubernetes.io/serviceaccount
+    # busybox wget has no --ca-certificate; SSL_CERT_FILE makes its TLS trust the
+    # in-cluster CA, so we can read the k8s API non-root without curl/apk.
+    export SSL_CERT_FILE="$SA/ca.crt"
+    K8S=https://kubernetes.default.svc
+    TOKEN=$(cat "$SA/token")
+    
+    # v1.7 installs the CLI in /usr/local/bin; retain the fallback for callers that
+    # explicitly override the aggregator image to a pre-v1.7 release.
+    VERSITYGW_BIN="$(command -v versitygw 2>/dev/null || true)"
+    [ -n "$VERSITYGW_BIN" ] || VERSITYGW_BIN=/app/versitygw
+    [ -x "$VERSITYGW_BIN" ] || { echo "iam-aggregator: versitygw CLI not found" >&2; exit 1; }
+    admin() { "$VERSITYGW_BIN" admin --access "$ROOT_ACCESS_KEY" --secret "$ROOT_SECRET_KEY" --endpoint-url "$ADMIN" "$@"; }
+    kget()  { wget -qO- --header "Authorization: Bearer $TOKEN" "$K8S$1" 2>/dev/null; }
+    # value of a k8s Secret data field (pretty-printed JSON: "KEY": "b64"); base64 d by caller
+    val()   { grep -oE "\"$1\": *\"[^\"]*\"" | head -1 | sed 's/^[^:]*: *"//;s/"$//'; }
+    
+    # Public-bucket handshake with the `acl` sidecar: we publish the concrete buckets
+    # that must be public-read to /shared/public-buckets.txt, then touch /shared/admin-done
+    # (always, even on early exit) so the acl container runs strictly AFTER our reconcile —
+    # i.e. after change-bucket-owner, which would otherwise reset the ACL.
+    : > /shared/public-buckets.txt
+    done_signal() { touch /shared/admin-done 2>/dev/null || true; }
+    
+    echo "iam-aggregator: waiting for gateway admin API at $ADMIN ..."
+    until admin list-users >/dev/null 2>&1; do sleep 3; done
+    
+    LIST=$(kget "/api/v1/namespaces/$NAMESPACE/secrets?labelSelector=runik.ing%2Fs3-identity%3Dtrue")
+    # Never prune on a failed read: a transient k8s API hiccup must not be read as
+    # "no users declared" and wipe every account.
+    printf %s "$LIST" | grep -q '"kind": *"SecretList"' || { echo "iam-aggregator: identity read failed — skipping (no prune)"; done_signal; exit 0; }
+    
+    # metadata.name of every item (plus harmless ownerReference names, deduped by
+    # empty access key below) = the declared identity secrets
+    NAMES=$(printf %s "$LIST" | grep -oE '"name": *"[^"]*"' | sed 's/^[^:]*: *"//;s/"$//' | sort -u)
+    
+    # Build the declared access-key set, then prune gateway users not in it
+    # (the env ROOT account is not in list-users, so it is never pruned).
+    DECLARED=""
+    for n in $NAMES; do
+      ak=$(kget "/api/v1/namespaces/$NAMESPACE/secrets/$n" | val AWS_ACCESS_KEY_ID | base64 -d 2>/dev/null)
+      [ -n "$ak" ] && DECLARED="$DECLARED $ak"
+    done
+    for acct in $(admin list-users 2>/dev/null | awk 'NR>2 && NF {print $1}'); do
+      case " $DECLARED " in
+        *" $acct "*) ;;
+        *) echo "iam-aggregator: pruning undeclared user"; admin delete-user --access "$acct" >/dev/null 2>&1 ;;
+      esac
+    done
+    
+    # Ensure each declared identity + its owned buckets
+    for n in $NAMES; do
+      s=$(kget "/api/v1/namespaces/$NAMESPACE/secrets/$n")
+      ak=$(printf %s "$s" | val AWS_ACCESS_KEY_ID | base64 -d 2>/dev/null)
+      sk=$(printf %s "$s" | val AWS_SECRET_ACCESS_KEY | base64 -d 2>/dev/null)
+      bks=$(printf %s "$s" | val BUCKETS | base64 -d 2>/dev/null)
+      perms=$(printf %s "$s" | val PERMISSIONS | base64 -d 2>/dev/null)
+      # public is a label on the secret (metadata, not data), present only when true
+      pub=; printf %s "$s" | grep -q '"runik.ing/s3-public" *: *"true"' && pub=true
+      [ -n "$ak" ] && [ -n "$sk" ] || continue
+      role=user
+      printf %s "$perms" | grep -qiw Admin && role=admin
+      if ! admin list-users 2>/dev/null | awk 'NR>2 {print $1}' | grep -qx "$ak"; then
+        admin create-user --access "$ak" --secret "$sk" --role "$role" >/dev/null 2>&1 \
+          && echo "iam-aggregator: created user (role $role)" \
+          || echo "iam-aggregator: create-user FAILED for an identity"
+      fi
+      # buckets: comma-separated; a posix bucket can't be a glob, skip wildcards.
+      # Created as the run uid (1042) -> no chown needed.
+      for b in $(printf %s "$bks" | tr ',' ' '); do
+        case "$b" in *"*"*) continue ;; "") continue ;; esac
+        [ -d "$BUCKETS_ROOT/$b" ] || mkdir -p "$BUCKETS_ROOT/$b"
+        admin change-bucket-owner --bucket "$b" --owner "$ak" >/dev/null 2>&1
+        # hand the concrete public buckets to the acl sidecar (wildcards already skipped)
+        [ "$pub" = "true" ] && echo "$b" >> /shared/public-buckets.txt
+      done
+    done
+    done_signal
+    echo "iam-aggregator: reconcile done"
+  acl.sh: |
+    #!/bin/sh
+    set -u
+    export AWS_ACCESS_KEY_ID="$ROOT_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ROOT_SECRET_KEY"
+    # Force path-style addressing: aws-cli v2 defaults to virtual-host style
+    # (bucket.s3.s3.svc) which has no DNS here. botocore reads this only from a config
+    # file, so we write a throwaway one. Matches the gateway's VGW_FORCE_PATH_STYLE.
+    export AWS_CONFIG_FILE=/tmp/aws-config
+    printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+    
+    # Wait for the aggregator pass, with a timeout so a stuck/crashed admin container
+    # can never hang this pod (restartPolicy Never -> it would block forever).
+    i=0
+    while [ ! -f /shared/admin-done ]; do
+      i=$((i + 1))
+      [ "$i" -gt 60 ] && { echo "acl: timed out waiting for the aggregator pass"; exit 0; }
+      sleep 2
+    done
+    
+    [ -s /shared/public-buckets.txt ] || { echo "acl: no public buckets"; exit 0; }
+    while IFS= read -r b; do
+      [ -n "$b" ] || continue
+      if aws --endpoint-url "$S3_ENDPOINT" --region us-east-1 \
+           s3api put-bucket-acl --bucket "$b" --acl public-read >/dev/null 2>&1; then
+        echo "acl: $b -> public-read"
+      else
+        echo "acl: put-bucket-acl FAILED for $b"
+      fi
+    done < /shared/public-buckets.txt
+    echo "acl: done"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-s3-eventsource
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-s3-sensor
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows"]
+    verbs: ["create", "get", "list"]
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-s3-aggregator-pod
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - list
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-s3-eventsource
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-s3-eventsource
+subjects:
+  - kind: ServiceAccount
+    name: gateway-s3-aggregator
+    namespace: argo-events
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-s3-sensor
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-s3-sensor
+subjects:
+  - kind: ServiceAccount
+    name: gateway-s3-aggregator
+    namespace: argo-events
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-s3-aggregator-pod
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-s3-aggregator-pod
+subjects:
+  - kind: ServiceAccount
+    name: gateway-s3-aggregator-pod
+    namespace: glyphs-release
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: gateway-s3-secrets
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: default-eventbus
+  template:
+    serviceAccountName: gateway-s3-aggregator
+  resource:
+    s3-identity-changes:
+      namespace: glyphs-release
+      version: v1
+      resource: secrets
+      eventTypes:
+        - ADD
+        - UPDATE
+        - DELETE
+      filter:
+        labels:
+          - key: runik.ing/s3-identity
+            operation: =
+            value: "true"
+        afterStart: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: gateway-s3-identities
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: the-yaml-life
+  policies:
+    - gateway-s3-identities
+  targetServiceAccounts:
+    - gateway-s3-aggregator-pod
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: gateway-s3-aggregator-pod
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: the-yaml-life
+  policies:
+    - gateway-s3-identities
+  targetServiceAccounts:
+    - gateway-s3-aggregator-pod
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: gateway-s3-identities
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  policy: |
+    path "secret/data/the-yaml-life/intro/gateway-s3-identities/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/the-yaml-life/intro/gateway-s3-identities/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/the-yaml-life/intro/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/intro/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/+/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/+/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/+/+/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/+/+/+/publics/s3-identities-gateway-*" {
+      capabilities = ["read","list"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: gateway-s3-aggregator
+  namespace: argo-events
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    provider: gateway
+    purpose: s3-identity-reconciliation
+spec:
+  eventBusName: default-eventbus
+  template:
+    serviceAccountName: gateway-s3-aggregator
+  dependencies:
+    
+    - name: s3-secret-event
+      eventSourceName: gateway-s3-secrets
+      eventName: s3-identity-changes
+  triggers:
+    - template:
+        name: run-aggregator
+        conditions: s3-secret-event
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: gateway-s3-aggregator-
+                namespace: glyphs-release
+              spec:
+                workflowTemplateRef:
+                  name: gateway-s3-reconcile
+          
+      rateLimit:
+        unit: Minute
+        requestsPerUnit: 1
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: gateway-s3-reconcile
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: s3
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: intro
+    spell: s3
+    runik.ing/s3-backend: versity
+    runik.ing/s3-provider: gateway
+spec:
+  entrypoint: reconcile
+  podGC:
+    deleteDelayDuration: 30m
+    strategy: OnWorkflowCompletion
+  templates:
+  - containerSet:
+      containers:
+      - command:
+        - sh
+        - /scripts/aggregator.sh
+        env:
+        - name: NAMESPACE
+          value: glyphs-release
+        - name: ADMIN_ENDPOINT
+          value: http://s3.glyphs-release.svc:7071
+        - name: BUCKETS_ROOT
+          value: /storage/cargo-hold/buckets
+        envFrom:
+        - secretRef:
+            name: s3-root
+        image: ghcr.io/versity/versitygw:v1.7.0
+        name: aggregator
+        resources:
+          limits:
+            cpu: 300m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        securityContext:
+          runAsGroup: 1069
+          runAsUser: 1042
+        volumeMounts:
+        - mountPath: /scripts
+          name: script
+        - mountPath: /storage/cargo-hold
+          name: buckets
+        - mountPath: /shared
+          name: shared
+      - command:
+        - sh
+        - /scripts/acl.sh
+        dependencies:
+        - aggregator
+        env:
+        - name: S3_ENDPOINT
+          value: http://s3.glyphs-release.svc:7070
+        - name: AWS_EC2_METADATA_DISABLED
+          value: "true"
+        - name: AWS_REQUEST_CHECKSUM_CALCULATION
+          value: when_required
+        - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+          value: when_required
+        envFrom:
+        - secretRef:
+            name: s3-root
+        image: public.ecr.aws/aws-cli/aws-cli:2.27.41
+        name: acl
+        volumeMounts:
+        - mountPath: /scripts
+          name: script
+        - mountPath: /shared
+          name: shared
+    name: reconcile
+    serviceAccountName: gateway-s3-aggregator-pod
+    tolerations:
+    - effect: NoSchedule
+      key: role
+      operator: Equal
+      value: system
+    volumes:
+    - configMap:
+        name: gateway-s3-aggregator-script
+      name: script
+    - hostPath:
+        path: /var/mnt/cargo-hold
+      name: buckets
+    - emptyDir: {}
+      name: shared
+  ttlStrategy:
+    secondsAfterFailure: 604800
+    secondsAfterSuccess: 86400

@@ -1,0 +1,9 @@
+name: services
+
+defaultTrinket:
+  repository: https://github.com/runik-platform/microspell.git
+  path: .
+  revision: upstream
+  values:
+    image:
+      repository: ghcr.io/example

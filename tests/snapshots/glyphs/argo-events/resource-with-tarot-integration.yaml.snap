@@ -1,0 +1,101 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: deployment-annotation-source
+  labels:
+    app.kubernetes.io/name: resource-with-tarot-integration
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: automation-eventbus
+  resource:
+    deployment-annotation-monitoring:
+      namespace: default
+      group: apps
+      version: v1
+      resource: deployments
+      eventTypes:
+        - UPDATE
+      filter:
+        expression: |
+          has(body.metadata.annotations) &&
+          has(body.metadata.annotations['runik.ing/action']) &&
+          body.metadata.annotations['runik.ing/action'] == 'restart'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: deployment-restart-sensor
+  labels:
+    app.kubernetes.io/name: resource-with-tarot-integration
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+    purpose: deployment-automation
+spec:
+  eventBusName: automation-eventbus
+  template:
+    serviceAccountName: deployment-automation
+  dependencies:
+    - name: deployment-restart-trigger
+      eventSourceName: deployment-annotation-source
+      eventName: deployment-annotation-monitoring
+      filters:
+        data:
+        - path: body.action
+          type: string
+          value:
+            - "restart"
+          comparator: =
+  triggers:
+    - template:
+        name: deployment-restart-trigger
+        conditions: "deployment-restart-trigger"
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: deployment-rollout-restart-
+                namespace: deployment-rollout-restart
+              spec:
+                workflowTemplateRef:
+                  name: deployment-rollout-restart
+                arguments:
+                  parameters:
+                    - name: deployment_name
+                      value: ""
+                    - name: deployment_namespace
+                      value: ""
+          
+          parameters:
+            - src:
+                dependencyName: deployment-restart-trigger
+                dataKey: body.metadata.name
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: deployment-restart-trigger
+                dataKey: body.metadata.namespace
+              dest: spec.arguments.parameters.1.value

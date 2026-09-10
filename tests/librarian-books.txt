@@ -1,0 +1,2 @@
+# Books rendered by Librarian and covered by golden snapshots.
+example-book

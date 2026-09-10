@@ -1,0 +1,77 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: service-annotation-source
+  labels:
+    app.kubernetes.io/name: resource-service-annotation-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    service-monitoring:
+      namespace: default
+      version: v1
+      resource: services
+      eventTypes:
+        - ADD
+        - UPDATE
+      filter:
+        labels:
+          - key: app.kubernetes.io/component
+            operation: =
+            value: "frontend"
+        expression: |
+          has(body.metadata.annotations) &&
+          has(body.metadata.annotations['service.beta.kubernetes.io/aws-load-balancer-type'])
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: service-config-sensor
+  labels:
+    app.kubernetes.io/name: resource-service-annotation-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: service-validator
+  dependencies:
+    
+    - name: service-config-event
+      eventSourceName: service-annotation-source
+      eventName: service-monitoring
+      filters:
+        data:
+          - path: body.metadata.annotations.service\.beta\.kubernetes\.io/aws-load-balancer-type
+            type: string
+            value:
+              - nlb
+              - alb
+  triggers:
+    - template:
+        name: validate-service-config
+        log:
+          intervalSeconds: 1

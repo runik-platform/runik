@@ -1,0 +1,95 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: shared-pg
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: database-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: database-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - '*-rw'
+    - '*-ro'
+  connectionURL: postgresql://{{username}}:{{password}}@shared-pg-rw.databases.svc:5432/*
+  passwordAuthentication: "password"
+  username: postgres
+  rootCredentials:
+    secret:
+      name: shared-pg-superuser
+    passwordKey: password
+    usernameKey: username
+  path: database
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: shared-mongo
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: database-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: database-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  pluginName: mongodb-database-plugin
+  allowedRoles:
+    - '*-rw'
+  connectionURL: mongodb://{{username}}:{{password}}@shared-mongo.databases.svc:27017/admin?tls=false
+  passwordAuthentication: "password"
+  username: root
+  rootCredentials:
+    vaultSecret:
+      path: secret/data/test-book/databases/publics/shared-mongo
+    passwordKey: password
+    usernameKey: username
+  path: database
+  rootPasswordRotation:
+    rotationPeriod: "0s"

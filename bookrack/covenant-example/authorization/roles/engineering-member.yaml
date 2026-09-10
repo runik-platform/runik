@@ -1,0 +1,9 @@
+role:
+  key: engineering-member
+  grants:
+    realmRoles:
+      - user
+    applicationRoles:
+      - application: console
+        role: admin
+

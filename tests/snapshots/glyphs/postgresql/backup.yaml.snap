@@ -1,0 +1,34 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: pre-migration-2026-05-19
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  cluster:
+    name: production-db
+  method: barmanObjectStore

@@ -1,0 +1,86 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+---
+# Source: summon/templates/summon.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: test
+            app.kubernetes.io/instance: test
+          
+        spec:
+          serviceAccountName: test
+          restartPolicy: OnFailure
+          
+          containers:
+            
+            - name: test-main
+              image: busybox:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - echo "Hello from scheduled job"; date; echo "Scheduled job completed"
+              
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              
+              
+              
+              env:
+              
+                - name: SPELLBOOK_NAME
+                  value: "default"
+                - name: CHAPTER_NAME
+                  value: "default"
+                - name: SPELL_NAME
+                  value: "test"
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

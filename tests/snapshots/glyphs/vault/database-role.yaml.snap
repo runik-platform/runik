@@ -1,0 +1,83 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: myapp-rw
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: database-role-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: database-role-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database
+  dBName: myapp
+  creationStatements:
+    - DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'myapp') THEN CREATE
+      ROLE "myapp" NOLOGIN; END IF; END $$;
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'
+      IN ROLE "myapp";
+    - ALTER ROLE "{{name}}" SET ROLE "myapp";
+    - GRANT ALL ON SCHEMA public TO "myapp";
+  defaultTTL: 1h
+  maxTTL: 24h
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: myapp-ro
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: database-role-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: database-role-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database
+  dBName: myapp
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+    - GRANT USAGE ON SCHEMA public TO "{{name}}";
+    - GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";

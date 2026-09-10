@@ -1,0 +1,44 @@
+name: console
+namespace: applications
+
+image:
+  tag: v1.2.0
+
+service:
+  external: true
+  prefix: /
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+
+glyphs:
+  cert-manager:
+    console-tls:
+      type: certificate
+      enabled: true
+      dnsNames:
+        - console.example.test
+      selector:
+        environment: staging
+        scope: global
+
+covenant:
+  roles:
+    admin:
+      realmRole: org-admin
+    readonly:
+      clientRole: reader
+  clients:
+    example:
+      webUrl: https://console.example.test
+      redirectUris:
+        - https://console.example.test/oauth/callback
+      clientRoles:
+        - reader
+      attributes:
+        oauth2Grant: false
+        authService: true
+      credentials:
+        sinks:
+          - serviceAccount: console

@@ -1,0 +1,88 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: resources-private-services-grafana
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  name: "resources-private-services-grafana"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: developers-grafana-access
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  name: "developers-grafana-access"
+  state: "present"
+  description: "Allow developers to reach grafana"
+  enabled: true
+  sourceGroupRefs:
+    - "developers"
+  destinationGroupRefs:
+    - "resources-private-services-grafana"
+  rules:
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: tcp
+      ports:
+      - 80
+      protocol: tcp
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: grafana
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+spec:
+  networkRouterRef:
+    name: "private-services"
+    namespace: "netbird"
+  serviceRef:
+    name: "grafana"
+  groups:
+    - name: "resources-private-services-grafana"

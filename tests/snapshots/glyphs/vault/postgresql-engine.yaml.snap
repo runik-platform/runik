@@ -1,0 +1,230 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: main-postgres
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - read-write
+    - read-only
+  connectionURL: postgresql://{{username}}:{{password}}@postgres.database.svc.cluster.local:5432/postgres
+  rootCredentials:
+    secret:
+      name: postgres-admin-credentials
+    passwordKey: password
+    usernameKey: username
+  path: database-test-book-base-system
+  rootPasswordRotation:
+    enable: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: app-postgres
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - read-write
+    - read-only
+  connectionURL: postgresql://{{username}}:{{password}}@app-postgres.apps.svc.cluster.local:5432/myapp
+  rootCredentials:
+    vaultSecret:
+      path: secret/data/test-book/base-system/publics/app-postgres
+    passwordKey: password
+    usernameKey: username
+  path: database-test-book-base-system
+  rootPasswordRotation:
+    enable: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: main-postgres-read-write
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database-test-book-base-system
+  dBName: postgres
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT ALL ON ALL TABLES IN SCHEMA public TO "{{name}}";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: main-postgres-read-only
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database-test-book-base-system
+  dBName: postgres
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: app-postgres-read-write
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database-test-book-base-system
+  dBName: myapp
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT ALL ON ALL TABLES IN SCHEMA public TO "{{name}}";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: app-postgres-read-only
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  path: database-test-book-base-system
+  dBName: myapp
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: database-test-book-base-system
+  labels:
+    app.kubernetes.io/name: postgresql-engine-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: base-system
+    spell: postgresql-engine-test
+spec:
+  authentication:
+    path: the-yaml-life
+    role: postgresql-engine-test
+    serviceAccount:
+      name: postgresql-engine-test
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: true
+  type: database
+  description: "Database secrets engine for PostgreSQL dynamic credentials"
+  config:
+    listingVisibility: hidden

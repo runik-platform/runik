@@ -1,0 +1,636 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: app
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: shared-pg
+  name: app
+  owner: app
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: reports
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: shared-pg
+  name: reports
+  owner: reports
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: shared-pg-app
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: shared-pg
+  name: app
+  ensure: present
+  login: false
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: shared-pg-reports
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: shared-pg
+  name: reports
+  ensure: present
+  login: false
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: multi-engine-shared-pg
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - app
+  connectionURL: postgresql://{{username}}:{{password}}@shared-pg-rw.databases.svc:5432/postgres
+  passwordAuthentication: "password"
+  rootCredentials:
+    secret:
+      name: shared-pg-vault-mgr-root
+    passwordKey: password
+    usernameKey: username
+  path: db/test-book/apps/multi-engine
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: multi-engine-shared-pg-analytics-db
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - reports
+  connectionURL: postgresql://{{username}}:{{password}}@shared-pg-rw.databases.svc:5432/postgres
+  passwordAuthentication: "password"
+  rootCredentials:
+    secret:
+      name: shared-pg-vault-mgr-root
+    passwordKey: password
+    usernameKey: username
+  path: analytics-db/test-book/apps/multi-engine
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: app
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: db/test-book/apps/multi-engine
+  dBName: multi-engine-shared-pg
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'
+      IN ROLE "app";
+    - ALTER ROLE "{{name}}" SET ROLE "app";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: reports
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: analytics-db/test-book/apps/multi-engine
+  dBName: multi-engine-shared-pg-analytics-db
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'
+      IN ROLE "reports";
+    - ALTER ROLE "{{name}}" SET ROLE "reports";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: app-db
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - app-db
+  targetServiceAccounts:
+    - multi-engine
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: reports-db
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - reports-db
+  targetServiceAccounts:
+    - multi-engine
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: app-db
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/apps/app-db/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/apps/app-db/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/apps/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/apps/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "db/test-book/apps/multi-engine/creds/*" {
+      capabilities = ["read"]
+    }
+    path "db/test-book/apps/multi-engine/static-creds/*" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts/db/test-book/apps/multi-engine" {
+      capabilities = ["create","read","update","delete"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: reports-db
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/apps/reports-db/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/apps/reports-db/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/apps/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/apps/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "analytics-db/test-book/apps/multi-engine/creds/*" {
+      capabilities = ["read"]
+    }
+    path "analytics-db/test-book/apps/multi-engine/static-creds/*" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts/analytics-db/test-book/apps/multi-engine" {
+      capabilities = ["create","read","update","delete"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: multi-engine
+  namespace: app-db
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: app-db
+    serviceAccount:
+      name: multi-engine
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  type: database
+  path: db/test-book/apps
+  description: "Runik database credentials for test-book/apps/multi-engine"
+  config:
+    listingVisibility: hidden
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: multi-engine
+  namespace: reports-db
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: reports-db
+    serviceAccount:
+      name: multi-engine
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  type: database
+  path: analytics-db/test-book/apps
+  description: "Runik database credentials for test-book/apps/multi-engine"
+  config:
+    listingVisibility: hidden
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: app-pg
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    runik.ing/credentials: dynamic
+    runik.ing/postgresql-cluster: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 30m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: db/test-book/apps/multi-engine/creds/app
+      authentication:
+        path: the-yaml-life
+        role: app-db
+        serviceAccount:
+          name: multi-engine
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: app-pg
+    labels:
+      app.kubernetes.io/name: multi-engine
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: apps
+      spell: multi-engine
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
+      runik.ing/credentials: dynamic
+      runik.ing/postgresql-cluster: shared-pg
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        DBNAME: app
+        HOST: shared-pg-rw.databases.svc
+        PORT: "5432"
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: reports-pg
+  labels:
+    app.kubernetes.io/name: multi-engine
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: multi-engine
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    runik.ing/credentials: dynamic
+    runik.ing/postgresql-cluster: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 30m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: analytics-db/test-book/apps/multi-engine/creds/reports
+      authentication:
+        path: the-yaml-life
+        role: reports-db
+        serviceAccount:
+          name: multi-engine
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: reports-pg
+    labels:
+      app.kubernetes.io/name: multi-engine
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: apps
+      spell: multi-engine
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
+      runik.ing/credentials: dynamic
+      runik.ing/postgresql-cluster: shared-pg
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        DBNAME: reports
+        HOST: shared-pg-rw.databases.svc
+        PORT: "5432"
+    type: Opaque

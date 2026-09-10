@@ -1,0 +1,1025 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-dkim-record-updater
+  labels:
+    app.kubernetes.io/name: test-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-record-updater
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-simple-txt-updater
+  labels:
+    app.kubernetes.io/name: test-simple-txt-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-simple-txt-updater
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-rsa-dkim-record-updater
+  labels:
+    app.kubernetes.io/name: test-rsa-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-dkim-record-updater
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: update-dns-sh
+  labels:
+    app.kubernetes.io/name: test-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-record-updater
+data:
+  
+  update-dns-sh: |
+    
+    #!/bin/bash
+    set -e
+    echo "DNSEndpoint Updater for default._domainkey.test.example.com"
+    echo "====================================="
+    
+    # Wait for Secret to exist (VaultSecret syncs from Vault)
+    echo "Waiting for Secret test-dkim..."
+    until kubectl get secret test-dkim -n glyphs-release > /dev/null 2>&1; do
+      echo "  Secret not found yet, retrying in 5s..."
+      sleep 5
+    done
+    echo "Secret found!"
+    
+    # Extract target value from Secret
+    echo "Reading value from Secret key: public_key_base64"
+    TARGET_VALUE=$(kubectl get secret test-dkim -n glyphs-release -o jsonpath='{.data.public_key_base64}' | base64 -d)
+    
+    if [ -z "$TARGET_VALUE" ]; then
+      echo "ERROR: Secret key 'public_key_base64' is empty or doesn't exist"
+      exit 1
+    fi
+    
+    echo "Raw value (first 80 chars): ${TARGET_VALUE:0:80}..."
+    
+    # Format DNS record if format string provided
+    DNS_VALUE=$(printf "v=DKIM1; k=ed25519; p=%s" "$TARGET_VALUE")
+    echo "Formatted DNS record: ${DNS_VALUE:0:80}..."
+    
+    # Patch DNSEndpoint with actual value
+    echo "Updating DNSEndpoint test-dkim-record..."
+    kubectl patch dnsendpoint test-dkim-record -n glyphs-release \
+      --type=json \
+      -p="[{\"op\": \"replace\", \"path\": \"/spec/endpoints/0/targets/0\", \"value\": \"$DNS_VALUE\"}]"
+    
+    echo "DNSEndpoint updated successfully!"
+    echo ""
+    echo "DNS record will be created by external-dns:"
+    echo "   Name: default._domainkey.test.example.com"
+    echo "   Type: TXT"
+    echo "   Value: ${DNS_VALUE:0:100}..."
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: update-dns-sh
+  labels:
+    app.kubernetes.io/name: test-simple-txt-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-simple-txt-updater
+data:
+  
+  update-dns-sh: |
+    
+    #!/bin/bash
+    set -e
+    echo "DNSEndpoint Updater for _verify.test.example.com"
+    echo "====================================="
+    
+    # Wait for Secret to exist (VaultSecret syncs from Vault)
+    echo "Waiting for Secret test-dkim..."
+    until kubectl get secret test-dkim -n glyphs-release > /dev/null 2>&1; do
+      echo "  Secret not found yet, retrying in 5s..."
+      sleep 5
+    done
+    echo "Secret found!"
+    
+    # Extract target value from Secret
+    echo "Reading value from Secret key: public_key"
+    TARGET_VALUE=$(kubectl get secret test-dkim -n glyphs-release -o jsonpath='{.data.public_key}' | base64 -d)
+    
+    if [ -z "$TARGET_VALUE" ]; then
+      echo "ERROR: Secret key 'public_key' is empty or doesn't exist"
+      exit 1
+    fi
+    
+    echo "Raw value (first 80 chars): ${TARGET_VALUE:0:80}..."
+    
+    # Format DNS record if format string provided
+    DNS_VALUE="$TARGET_VALUE"
+    
+    # Patch DNSEndpoint with actual value
+    echo "Updating DNSEndpoint test-simple-txt..."
+    kubectl patch dnsendpoint test-simple-txt -n glyphs-release \
+      --type=json \
+      -p="[{\"op\": \"replace\", \"path\": \"/spec/endpoints/0/targets/0\", \"value\": \"$DNS_VALUE\"}]"
+    
+    echo "DNSEndpoint updated successfully!"
+    echo ""
+    echo "DNS record will be created by external-dns:"
+    echo "   Name: _verify.test.example.com"
+    echo "   Type: TXT"
+    echo "   Value: ${DNS_VALUE:0:100}..."
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: update-dns-sh
+  labels:
+    app.kubernetes.io/name: test-rsa-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-dkim-record-updater
+data:
+  
+  update-dns-sh: |
+    
+    #!/bin/bash
+    set -e
+    echo "DNSEndpoint Updater for default._domainkey.test2.example.com"
+    echo "====================================="
+    
+    # Wait for Secret to exist (VaultSecret syncs from Vault)
+    echo "Waiting for Secret test-rsa-dkim..."
+    until kubectl get secret test-rsa-dkim -n glyphs-release > /dev/null 2>&1; do
+      echo "  Secret not found yet, retrying in 5s..."
+      sleep 5
+    done
+    echo "Secret found!"
+    
+    # Extract target value from Secret
+    echo "Reading value from Secret key: public_key_base64"
+    TARGET_VALUE=$(kubectl get secret test-rsa-dkim -n glyphs-release -o jsonpath='{.data.public_key_base64}' | base64 -d)
+    
+    if [ -z "$TARGET_VALUE" ]; then
+      echo "ERROR: Secret key 'public_key_base64' is empty or doesn't exist"
+      exit 1
+    fi
+    
+    echo "Raw value (first 80 chars): ${TARGET_VALUE:0:80}..."
+    
+    # Format DNS record if format string provided
+    DNS_VALUE=$(printf "v=DKIM1; k=rsa; p=%s" "$TARGET_VALUE")
+    echo "Formatted DNS record: ${DNS_VALUE:0:80}..."
+    
+    # Patch DNSEndpoint with actual value
+    echo "Updating DNSEndpoint test-rsa-dkim-record..."
+    kubectl patch dnsendpoint test-rsa-dkim-record -n glyphs-release \
+      --type=json \
+      -p="[{\"op\": \"replace\", \"path\": \"/spec/endpoints/0/targets/0\", \"value\": \"$DNS_VALUE\"}]"
+    
+    echo "DNSEndpoint updated successfully!"
+    echo ""
+    echo "DNS record will be created by external-dns:"
+    echo "   Name: default._domainkey.test2.example.com"
+    echo "   Type: TXT"
+    echo "   Value: ${DNS_VALUE:0:100}..."
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-dkim-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating ed25519 keypair for test-dkim..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/dns-test/test/glyphs-release/publics/test-dkim"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t ed25519 -f /tmp/key -N "" -C "DKIM for test.example.com"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test.example.com" \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", domain: $domain, created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test.example.com" \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "ed25519", domain: $domain, created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: keygen-sh
+  labels:
+    app.kubernetes.io/name: test-rsa-dkim-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-dkim-keygen
+data:
+  
+  keygen-sh: |
+    
+    #!/bin/sh
+    set -e
+    echo "Generating rsa keypair for test-rsa-dkim..."
+    
+    VAULT_ADDR="http://vault.vault.svc:8200"
+    VAULT_PATH="kv/data/dns-test/test/glyphs-release/publics/test-rsa-dkim"
+    VAULT_AUTH_PATH="k8s-path-auth"
+    VAULT_ROLE="test"
+    SA_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+    
+    # Login to Vault using Kubernetes auth
+    echo "Logging into Vault..."
+    LOGIN_RESPONSE=$(curl -s -X POST "$VAULT_ADDR/v1/auth/$VAULT_AUTH_PATH/login" \
+      -d "{\"jwt\":\"$SA_TOKEN\",\"role\":\"$VAULT_ROLE\"}")
+    
+    VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
+    
+    if [ -z "$VAULT_TOKEN" ] || [ "$VAULT_TOKEN" = "null" ]; then
+      echo "Failed to login to Vault:"
+      echo "$LOGIN_RESPONSE"
+      exit 1
+    fi
+    
+    echo "Logged in successfully"
+    
+    # Check if key exists - try KV v2 first, fallback to KV v1
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH" >/dev/null 2>&1; then
+      echo "Key already exists (KV v2), skipping"
+      exit 0
+    fi
+    
+    # Try KV v1 path
+    VAULT_PATH_V1=$(echo "$VAULT_PATH" | sed 's|/data/|/|')
+    if curl -sf -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/$VAULT_PATH_V1" >/dev/null 2>&1; then
+      echo "Key already exists (KV v1), skipping"
+      exit 0
+    fi
+    
+    # Generate keypair
+    ssh-keygen -t rsa -b %!d(float64=2048) -f /tmp/key -N "" -C "RSA DKIM for test2.example.com"
+    
+    # Build JSON payloads for both KV versions
+    JSON_V2=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test2.example.com" \
+      '{data: {private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", domain: $domain, created_at: $created}}')
+    
+    JSON_V1=$(jq -n \
+      --arg pk "$(cat /tmp/key | base64 -w 0)" \
+      --arg pubk "$(cat /tmp/key.pub)" \
+      --arg pubk64 "$(cat /tmp/key.pub | awk '{print $2}')" \
+      --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg domain "test2.example.com" \
+      '{private_key: $pk, public_key: $pubk, public_key_base64: $pubk64, algorithm: "rsa", domain: $domain, created_at: $created}')
+    
+    # Try KV v2 first
+    RESULT=$(curl -s -w "\\n%{http_code}" -X POST \
+      -H "X-Vault-Token: $VAULT_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_V2" "$VAULT_ADDR/v1/$VAULT_PATH")
+    
+    HTTP_CODE=$(echo "$RESULT" | tail -n1)
+    BODY=$(echo "$RESULT" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+      echo "Stored in Vault (KV v2): $VAULT_PATH"
+    else
+      echo "KV v2 failed (HTTP $HTTP_CODE): $BODY"
+      echo "Trying KV v1..."
+    
+      RESULT_V1=$(curl -s -w "\\n%{http_code}" -X POST \
+        -H "X-Vault-Token: $VAULT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_V1" "$VAULT_ADDR/v1/$VAULT_PATH_V1")
+    
+      HTTP_CODE_V1=$(echo "$RESULT_V1" | tail -n1)
+      BODY_V1=$(echo "$RESULT_V1" | sed '$d')
+    
+      if [ "$HTTP_CODE_V1" = "200" ] || [ "$HTTP_CODE_V1" = "204" ]; then
+        echo "Stored in Vault (KV v1): $VAULT_PATH_V1"
+      else
+        echo "KV v1 failed (HTTP $HTTP_CODE_V1): $BODY_V1"
+        exit 1
+      fi
+    fi
+    
+    echo "Done"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: test-dkim-record-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+- apiGroups: ["externaldns.k8s.io"]
+  resources: ["dnsendpoints"]
+  verbs: ["get", "patch"]
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: test-simple-txt-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+- apiGroups: ["externaldns.k8s.io"]
+  resources: ["dnsendpoints"]
+  verbs: ["get", "patch"]
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: test-rsa-dkim-record-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+- apiGroups: ["externaldns.k8s.io"]
+  resources: ["dnsendpoints"]
+  verbs: ["get", "patch"]
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-dkim-record-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+subjects:
+- kind: ServiceAccount
+  name: test-dkim-record-updater
+  namespace: glyphs-release
+roleRef:
+  kind: Role
+  name: test-dkim-record-updater
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-simple-txt-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+subjects:
+- kind: ServiceAccount
+  name: test-simple-txt-updater
+  namespace: glyphs-release
+roleRef:
+  kind: Role
+  name: test-simple-txt-updater
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-rsa-dkim-record-updater
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+subjects:
+- kind: ServiceAccount
+  name: test-rsa-dkim-record-updater
+  namespace: glyphs-release
+roleRef:
+  kind: Role
+  name: test-rsa-dkim-record-updater
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-dkim-record-updater
+  labels:
+    app.kubernetes.io/name: test-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-record-updater
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-dkim-record-updater
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-updater-script: 6abb950c80e5c83691bc6dea3eaa7c6999dd3a5a23a8c91c0b0a4f33e8984308
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "0"
+    spec:
+      serviceAccountName: test-dkim-record-updater
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-dkim-record-updater-test-dkim-record-updater
+          image: docker.io/bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+          args:
+            - /scripts/update-dns.sh
+          
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          
+          volumeMounts:
+          
+            - name: update-dns-sh
+              
+              mountPath: /scripts/update-dns.sh
+              
+              subPath: update-dns-sh
+          
+          
+          
+      
+      volumes:
+      
+        - name: update-dns-sh
+          configMap:
+            name: update-dns-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-simple-txt-updater
+  labels:
+    app.kubernetes.io/name: test-simple-txt-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-simple-txt-updater
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-simple-txt-updater
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-updater-script: 79d18e4f27bfb8d6e31f1de29a1e262ed93077ec1d523e13e6bfd174f75d42d8
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "0"
+    spec:
+      serviceAccountName: test-simple-txt-updater
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-simple-txt-updater-test-simple-txt-updater
+          image: docker.io/bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+          args:
+            - /scripts/update-dns.sh
+          
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          
+          volumeMounts:
+          
+            - name: update-dns-sh
+              
+              mountPath: /scripts/update-dns.sh
+              
+              subPath: update-dns-sh
+          
+          
+          
+      
+      volumes:
+      
+        - name: update-dns-sh
+          configMap:
+            name: update-dns-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-rsa-dkim-record-updater
+  labels:
+    app.kubernetes.io/name: test-rsa-dkim-record-updater
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-dkim-record-updater
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-rsa-dkim-record-updater
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-updater-script: b338a2102a1d18a99725fe9b57d2d378ac7d464f49f7d7f7c72000f65ad577a6
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "0"
+    spec:
+      serviceAccountName: test-rsa-dkim-record-updater
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-rsa-dkim-record-updater-test-rsa-dkim-record-updater
+          image: docker.io/bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+          args:
+            - /scripts/update-dns.sh
+          
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          
+          volumeMounts:
+          
+            - name: update-dns-sh
+              
+              mountPath: /scripts/update-dns.sh
+              
+              subPath: update-dns-sh
+          
+          
+          
+      
+      volumes:
+      
+        - name: update-dns-sh
+          configMap:
+            name: update-dns-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-dkim-keygen
+  labels:
+    app.kubernetes.io/name: test-dkim-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-dkim-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-dkim-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: b00e01525d34ec9e0c983acafb0482d1eb7e48d81ccfa80a6c3eb0a47611c588
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-dkim-keygen-test-dkim-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-rsa-dkim-keygen
+  labels:
+    app.kubernetes.io/name: test-rsa-dkim-keygen
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/managed-by: Helm
+    spell: test-rsa-dkim-keygen
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-rsa-dkim-keygen
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-keygen-script: 21e5ef05cc3239c614c0ce39b6bf8d5ca7af84b9afcf3ec537f4475aaa296ce5
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+        helm.sh/hook-weight: "-5"
+    spec:
+      serviceAccountName: test
+      restartPolicy: OnFailure
+      
+      containers:
+        
+        - name: test-rsa-dkim-keygen-test-rsa-dkim-keygen
+          image: docker.io/hashicorp/vault:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - apk add --no-cache openssh-client curl jq && /bin/sh /scripts/keygen.sh
+          
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          
+          volumeMounts:
+          
+            - name: keygen-sh
+              
+              mountPath: /scripts/keygen.sh
+              
+              subPath: keygen-sh
+          
+          
+          env:
+          
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          
+      
+      volumes:
+      
+        - name: keygen-sh
+          configMap:
+            name: keygen-sh
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: test-dkim-record
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+spec:
+  endpoints:
+    - dnsName: default._domainkey.test.example.com
+      recordType: TXT
+      targets:
+        - "PLACEHOLDER_WILL_BE_UPDATED_FROM_VAULT"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: test-simple-txt
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+spec:
+  endpoints:
+    - dnsName: _verify.test.example.com
+      recordType: TXT
+      targets:
+        - "PLACEHOLDER_WILL_BE_UPDATED_FROM_VAULT"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: test-rsa-dkim-record
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+spec:
+  endpoints:
+    - dnsName: default._domainkey.test2.example.com
+      recordType: TXT
+      targets:
+        - "PLACEHOLDER_WILL_BE_UPDATED_FROM_VAULT"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-dkim
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/dns-test/test/glyphs-release/publics/test-dkim
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-dkim
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+      domain: '{{ .secret.domain }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: test-rsa-dkim
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: dns-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: dns-test
+    chapter: test
+    spell: kaster
+  annotations:
+    
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/dns-test/test/glyphs-release/publics/test-rsa-dkim
+      authentication:
+        path: k8s-path-auth
+        role: test
+        serviceAccount:
+          name: test
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: true
+  output:
+    name: test-rsa-dkim
+    stringData:
+      private_key: '{{ .secret.private_key }}'
+      public_key: '{{ .secret.public_key }}'
+      public_key_base64: '{{ .secret.public_key_base64 }}'
+      algorithm: '{{ .secret.algorithm }}'
+      domain: '{{ .secret.domain }}'
+    type: Opaque

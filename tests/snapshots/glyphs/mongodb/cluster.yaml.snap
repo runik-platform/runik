@@ -1,0 +1,540 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mongo-main
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: mongo-main-mongodb-system
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  authentication:
+    path: platform
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: platform
+  policies:
+    - mongo-main-mongodb-system
+  targetServiceAccounts:
+    - mongo-main
+  targetNamespaces:
+    targetNamespaces:
+      - databases
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: mongodb.example.io/v1alpha1
+kind: MongoDBEngine
+metadata:
+  name: mongo-main
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  connection:
+    authenticationDatabase: admin
+    credentialsSecretRef:
+      name: mongo-main-operator-admin
+      namespace: databases
+      passwordKey: PASSWORD
+      usernameKey: USERNAME
+    host: mongo-main-rs0.databases.svc.cluster.local
+    options:
+      maxPoolSize: 10
+      replicaSet: rs0
+      retryReads: true
+      retryWrites: true
+    port: 27017
+    retry:
+      attempts: 3
+      initialBackoffMS: 200
+    timeouts:
+      connectMS: 5000
+      serverSelectionMS: 5000
+      socketMS: 10000
+    tls:
+      caRef:
+        key: ca.crt
+        kind: Secret
+        name: mongo-main-ssl
+        namespace: databases
+      enabled: true
+  allowedNamespaces:
+    matchLabels:
+      mongodb.runik.io/engine: mongo-main
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: mongo-main
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+  finalizers:
+    - percona.com/delete-psmdb-pods-in-order
+spec:
+  backup:
+    enabled: true
+    image: percona/percona-backup-mongodb:2.15.0
+    pitr:
+      compressionLevel: 6
+      compressionType: gzip
+      enabled: false
+      oplogOnly: false
+    storages:
+      s3:
+        main: true
+        s3:
+          bucket: platform-databases-mongo-main-backup
+          credentialsSecret: mongo-main-backup
+          endpointUrl: http://seaweedfs-s3.seaweedfs.svc:8333
+          insecureSkipTLSVerify: false
+          prefix: mongo-main
+          region: us-east-1
+        type: s3
+    tasks:
+    - compressionType: gzip
+      enabled: true
+      name: weekly
+      retention:
+        count: 7
+        deleteFromStorage: true
+        type: count
+      schedule: 0 3 * * 0
+      storageName: s3
+  crVersion: 1.23.0
+  image: percona/percona-server-mongodb:8.0.26-11
+  pmm:
+    enabled: false
+    image: percona/pmm-client:3.8.1
+    serverHost: monitoring-service
+  replsets:
+  - affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+    configuration: |
+      net:
+        tls:
+          allowConnectionsWithoutCertificates: true
+    name: rs0
+    podDisruptionBudget:
+      maxUnavailable: 1
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: 300m
+        memory: 1Gi
+    size: 3
+    volumeSpec:
+      persistentVolumeClaim:
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: longhorn
+  sharding:
+    enabled: false
+  tls:
+    allowInvalidCertificates: true
+    certManagementPolicy: auto
+    mode: requireTLS
+  updateStrategy: SmartUpdate
+  upgradeOptions:
+    apply: disabled
+    schedule: 0 2 * * *
+    setFCV: false
+    versionServiceEndpoint: https://check.percona.com
+  users:
+  - db: admin
+    name: mongodb_operator
+    passwordSecretRef:
+      key: PASSWORD
+      name: mongo-main-operator-admin
+    roles:
+    - db: admin
+      name: userAdminAnyDatabase
+    - db: admin
+      name: dbAdminAnyDatabase
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: mongo-main-mongodb-system
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  authentication:
+    path: platform
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "kv/data/platform/databases/databases/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/metadata/platform/databases/databases/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "kv/data/platform/databases/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/databases/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/platform/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/data/platform/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "kv/metadata/platform/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: platform-databases-mongo-main-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: platform
+    role: mongo-main-mongodb-system
+    serviceAccount:
+      name: mongo-main
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/platform/databases/databases/publics/
+  secretKey: AWS_ACCESS_KEY_ID
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: platform-databases-mongo-main-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  authentication:
+    path: platform
+    role: mongo-main-mongodb-system
+    serviceAccount:
+      name: mongo-main
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: kv/data/platform/databases/databases/publics/
+  secretKey: AWS_SECRET_ACCESS_KEY
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: mongo-main-operator-admin
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  authentication:
+    path: platform
+    role: mongo-main-mongodb-system
+    serviceAccount:
+      name: mongo-main
+  connection:
+    address: https://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  kvSecretRetainPolicy: Retain
+  path: kv/data/platform/databases/glyphs-release/publics/
+  secretKey: PASSWORD
+  secretFormat:
+    passwordPolicyName: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-mongo-main-backup
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: platform-databases-mongo-main-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+      authentication:
+        path: platform
+        role: mongo-main-mongodb-system
+        serviceAccount:
+          name: mongo-main
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+      authentication:
+        path: platform
+        role: mongo-main-mongodb-system
+        serviceAccount:
+          name: mongo-main
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: mongo-main-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: platform
+      app.kubernetes.io/managed-by: Helm
+      spelbook: platform
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: platform-databases-mongo-main-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        AWS_ENDPOINT: https://s3.example.test
+        AWS_ENDPOINTS: https://s3.example.test
+        AWS_REGION: us-east-1
+        S3_BUCKET: platform-databases-mongo-main-backup
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: s3-identities-seaweedfs-mongo-main-backup
+  namespace: seaweedfs
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+    runik.ing/identity-name: platform-databases-mongo-main-backup
+    runik.ing/s3-identity: "true"
+    runik.ing/s3-provider: seaweedfs
+    runik.ing/source-namespace: databases
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: aws-access-key-id
+      requestType: GET
+      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+      authentication:
+        path: platform
+        role: seaweedfs
+        serviceAccount:
+          name: seaweedfs
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+    - name: aws-secret-access-key
+      requestType: GET
+      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+      authentication:
+        path: platform
+        role: seaweedfs
+        serviceAccount:
+          name: seaweedfs
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: platform-databases-mongo-main-backup
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: platform
+      app.kubernetes.io/managed-by: Helm
+      spelbook: platform
+      chapter: databases
+      spell: kaster
+      runik.ing/identity-name: platform-databases-mongo-main-backup
+      runik.ing/s3-identity: "true"
+      runik.ing/s3-provider: seaweedfs
+      runik.ing/source-namespace: databases
+    stringData:
+        BUCKETS: platform-databases-mongo-main-backup
+        IDENTITY_NAME: platform-databases-mongo-main-backup
+        PERMISSIONS: Read,Write,List
+        AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
+        AWS_SECRET_ACCESS_KEY: '{{ index . "aws-secret-access-key" "AWS_SECRET_ACCESS_KEY" }}'
+    type: Opaque
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: mongo-main-operator-admin
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: kv/data/platform/databases/glyphs-release/publics/mongo-main-operator-admin
+      authentication:
+        path: platform
+        role: mongo-main-mongodb-system
+        serviceAccount:
+          name: mongo-main
+      connection:
+        address: https://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: mongo-main-operator-admin
+    labels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: platform
+      app.kubernetes.io/managed-by: Helm
+      spelbook: platform
+      chapter: databases
+      spell: kaster
+    stringData:
+        USERNAME: mongodb_operator
+        PASSWORD: '{{ index .secret "PASSWORD" }}'
+    type: Opaque

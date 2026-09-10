@@ -1,0 +1,54 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: mongodb.example.io/v1alpha1
+kind: MongoDBEngine
+metadata:
+  name: shared-mongodb
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: platform
+    chapter: databases
+    spell: kaster
+spec:
+  connection:
+    authenticationDatabase: admin
+    credentialsSecretRef:
+      name: mongodb-operator-admin
+      namespace: database-system
+      passwordKey: password
+      usernameKey: username
+    host: mongodb.database-system.svc.cluster.local
+    options:
+      replicaSet: rs0
+      retryReads: true
+      retryWrites: true
+    port: 27017
+    tls:
+      caRef:
+        key: ca.crt
+        kind: Secret
+        name: mongodb-ca
+        namespace: database-system
+      enabled: true
+  allowedNamespaces:
+    matchLabels:
+      mongodb.runik.io/engine: shared-mongodb

@@ -1,0 +1,7 @@
+binding:
+  key: engineering-access
+  subjects:
+    groups:
+      - engineering
+  roleRef: engineering-member
+

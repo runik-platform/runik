@@ -1,0 +1,23 @@
+name: service
+namespace: automation
+
+image:
+  tag: v1.0.0
+
+service:
+  enabled: false
+
+covenant:
+  clients:
+    example:
+      type: serviceAccount
+      clientId: automation
+      webUrl: https://automation.example.test
+      clientRoles:
+        - reader
+      serviceAccountRoles:
+        - clientId: realm-management
+          roles:
+            - view-users
+      credentials:
+        publish: false

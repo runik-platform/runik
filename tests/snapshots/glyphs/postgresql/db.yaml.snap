@@ -1,0 +1,326 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: miapp
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: shared-pg
+  name: miapp
+  owner: miapp
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: shared-pg-miapp
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: shared-pg
+  name: miapp
+  ensure: present
+  login: false
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: miapp-shared-pg
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - miapp
+  connectionURL: postgresql://{{username}}:{{password}}@shared-pg-rw.databases.svc:5432/postgres
+  passwordAuthentication: "password"
+  rootCredentials:
+    secret:
+      name: shared-pg-vault-mgr-root
+    passwordKey: password
+    usernameKey: username
+  path: db/test-book/admintools/miapp
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: miapp
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: db/test-book/admintools/miapp
+  dBName: miapp-shared-pg
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'
+      IN ROLE "miapp";
+    - ALTER ROLE "{{name}}" SET ROLE "miapp";
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: miapp
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - miapp
+  targetServiceAccounts:
+    - miapp
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: miapp
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/admintools/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/admintools/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/admintools/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/admintools/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "db/test-book/admintools/miapp/creds/*" {
+      capabilities = ["read"]
+    }
+    path "db/test-book/admintools/miapp/static-creds/*" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts/db/test-book/admintools/miapp" {
+      capabilities = ["create","read","update","delete"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: miapp
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: miapp
+    serviceAccount:
+      name: miapp
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  type: database
+  path: db/test-book/admintools
+  description: "Runik database credentials for test-book/admintools/miapp"
+  config:
+    listingVisibility: hidden
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: miapp
+  labels:
+    app.kubernetes.io/name: miapp
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: admintools
+    spell: miapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    runik.ing/credentials: dynamic
+    runik.ing/postgresql-cluster: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 30m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: db/test-book/admintools/miapp/creds/miapp
+      authentication:
+        path: the-yaml-life
+        role: miapp
+        serviceAccount:
+          name: miapp
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: miapp
+    labels:
+      app.kubernetes.io/name: miapp
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: admintools
+      spell: miapp
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
+      runik.ing/credentials: dynamic
+      runik.ing/postgresql-cluster: shared-pg
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        DBNAME: miapp
+        HOST: shared-pg-rw.databases.svc
+        PORT: "5432"
+    type: Opaque

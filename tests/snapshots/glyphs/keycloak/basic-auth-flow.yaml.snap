@@ -1,0 +1,44 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakAuthFlow
+metadata:
+  name: test-auth-flow-link-user
+  labels:
+    app.kubernetes.io/name: keycloak-basic-auth-flow
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  alias: link-existing-user
+  builtIn: false
+  providerId: basic-flow
+  topLevel: true
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  authenticationExecutions:
+    - authenticator: idp-review-profile
+      requirement: REQUIRED
+      priority: 0
+      authenticatorFlow: false
+    - authenticator: idp-auto-link
+      requirement: REQUIRED
+      priority: 1
+      authenticatorFlow: false

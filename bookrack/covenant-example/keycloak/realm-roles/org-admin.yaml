@@ -1,0 +1,7 @@
+realmRole:
+  key: org-admin
+  description: Organization administrator
+  composite: true
+  compositeRoles:
+    - user
+

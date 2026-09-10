@@ -1,0 +1,2408 @@
+---
+# Source: librarian/templates/runik.yaml
+#se puede agregar un if aca para q si no este definido el libro haga un "ls" y ver q libros hay y haga de multibook on one sweep
+---
+# Source: librarian/templates/project.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: example-book
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: '*'
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: v1.21.1
+      helm:
+        skipCrds: true
+        valuesObject:
+          crds:
+            enabled: true
+      
+    - repoURL: https://github.com/runik-platform/kaster.git
+      path: .
+      targetRevision: upstream
+      helm:
+        valuesObject:
+          
+          glyphs:
+            cert-manager:
+              letsencrypt-staging:
+                email: platform@example.test
+                enabled: true
+                issuerType: aws
+                nameOverride: letsencrypt-staging
+                selectorLabels:
+                  default: book
+                  environment: staging
+                  scope: global
+                type: clusterIssuer
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+      
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.21.1
+      helm:
+        valuesObject:
+          provider:
+            name: webhook
+          sources:
+          - service
+          - ingress
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: covenant-example
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/runik.git
+      path: covenant
+      targetRevision: upstream
+      helm:
+        valuesObject:
+          applicationSet:
+            source:
+              path: covenant
+              repository: https://github.com/runik-platform/runik.git
+              revision: upstream
+          
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: covenant-example
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/summon.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          args:
+          - start-dev
+          command:
+          - /opt/keycloak/bin/kc.sh
+          image:
+            name: keycloak/keycloak
+            repository: quay.io
+            tag: 26.4.7
+          name: keycloak
+          namespace: keycloak
+          postgresql:
+            keycloak:
+              credentials:
+                mode: static
+                refreshPeriod: 3m0s
+                rotationPeriod: 2592000
+                secretName: keycloak-postgresql
+                serviceAccount: keycloak
+                username: keycloak
+              databaseName: keycloak
+              selector:
+                name: pg-infra
+                scope: global
+              type: db
+          service:
+            ports:
+            - name: http
+              port: 8080
+              targetPort: 8080
+          vault:
+            access:
+              type: prolicy
+            keycloak-access:
+              randomKey: password
+              staticData:
+                username: keycloak
+              type: secret
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+      
+    - repoURL: https://github.com/runik-platform/kaster.git
+      path: .
+      targetRevision: upstream
+      helm:
+        valuesObject:
+          
+          glyphs:
+            keycloak:
+              provider:
+                adminType: user
+                insecureSkipVerify: true
+                name: keycloak
+                secret: keycloak-access
+                type: clusterKeycloak
+                url: http://keycloak.keycloak.svc:8080
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nightly-backup
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/summon.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          args:
+          - echo starting backup; date; echo backup complete
+          command:
+          - sh
+          - -c
+          image:
+            name: alpine
+            tag: "3.22"
+          name: nightly-backup
+          namespace: operations
+          service:
+            enabled: false
+          workload:
+            restartPolicy: OnFailure
+            schedule: 0 2 * * *
+            type: cronjob
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: operations
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pg-infra
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/summon.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          name: pg-infra
+          namespace: pg-infra
+          postgresql:
+            pg-infra:
+              backup:
+                enabled: false
+              dbEngine:
+                enabled: false
+              enableSuperuserAccess: true
+              instances: 1
+              storage:
+                size: 1Gi
+              type: cluster
+          service:
+            enabled: false
+          serviceAccount:
+            enabled: true
+          workload:
+            enabled: false
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pg-infra
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/summon.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          freeForm:
+            vault-server:
+              definition:
+                apiVersion: vault.banzaicloud.com/v1alpha1
+                kind: Vault
+                metadata:
+                  name: vault
+                spec:
+                  image: hashicorp/vault:1.21.1
+                  size: 1
+              type: manifest
+          name: vault
+          namespace: vault
+          postgresql:
+            vault:
+              credentials:
+                mode: static
+                refreshPeriod: 3m0s
+                rotationPeriod: 2592000
+                secretName: vault-postgresql
+                serviceAccount: vault
+                username: vault
+              databaseName: vault
+              selector:
+                name: pg-infra
+                scope: global
+              type: db
+          service:
+            enabled: false
+          serviceAccount:
+            automount: true
+            enabled: true
+          vault:
+            access:
+              type: prolicy
+            database:
+              mountType: database
+              path: database
+              type: secretEngineMount
+          workload:
+            enabled: false
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: infrastructure
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: console
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/microspell.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          covenant:
+            clients:
+              example:
+                attributes:
+                  authService: true
+                  oauth2Grant: false
+                clientRoles:
+                - reader
+                credentials:
+                  sinks:
+                  - serviceAccount: console
+                redirectUris:
+                - https://console.example.test/oauth/callback
+                webUrl: https://console.example.test
+            roles:
+              admin:
+                realmRole: org-admin
+              readonly:
+                clientRole: reader
+          image:
+            repository: ghcr.io/example
+            tag: v1.2.0
+          name: console
+          namespace: applications
+          service:
+            external: true
+            ports:
+            - name: http
+              port: 80
+              targetPort: 8080
+            prefix: /
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/microspell.git
+              revision: upstream
+              values:
+                image:
+                  repository: ghcr.io/example
+            name: services
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+      
+    - repoURL: https://github.com/runik-platform/kaster.git
+      path: .
+      targetRevision: upstream
+      helm:
+        valuesObject:
+          
+          glyphs:
+            cert-manager:
+              console-tls:
+                dnsNames:
+                - console.example.test
+                enabled: true
+                selector:
+                  environment: staging
+                  scope: global
+                type: certificate
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/microspell.git
+              revision: upstream
+              values:
+                image:
+                  repository: ghcr.io/example
+            name: services
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: applications
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: public
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/microspell.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          covenant:
+            clients:
+              example:
+                public: true
+                redirectUris:
+                - https://public.example.test/callback
+                webUrl: https://public.example.test
+          image:
+            repository: ghcr.io/example
+            tag: v1.0.0
+          name: public
+          namespace: applications
+          service:
+            external: true
+            prefix: /
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/microspell.git
+              revision: upstream
+              values:
+                image:
+                  repository: ghcr.io/example
+            name: services
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: applications
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: saml
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/microspell.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          covenant:
+            clients:
+              example:
+                attributes:
+                  saml.assertion.signature: "true"
+                  saml.force.post.binding: "true"
+                certificate:
+                  dnsNames:
+                  - saml.example.test
+                clientId: https://saml.example.test/metadata
+                type: saml
+                webUrl: https://saml.example.test
+          image:
+            repository: ghcr.io/example
+            tag: v2.0.0
+          name: saml
+          namespace: saml
+          service:
+            external: true
+            prefix: /
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/microspell.git
+              revision: upstream
+              values:
+                image:
+                  repository: ghcr.io/example
+            name: services
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: saml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: service
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/microspell.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          covenant:
+            clients:
+              example:
+                clientId: automation
+                clientRoles:
+                - reader
+                credentials:
+                  publish: false
+                serviceAccountRoles:
+                - clientId: realm-management
+                  roles:
+                  - view-users
+                type: serviceAccount
+                webUrl: https://automation.example.test
+          image:
+            repository: ghcr.io/example
+            tag: v1.0.0
+          name: service
+          namespace: automation
+          service:
+            enabled: false
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/microspell.git
+              revision: upstream
+              values:
+                image:
+                  repository: ghcr.io/example
+            name: services
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: automation
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+---
+# Source: librarian/templates/runik.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apply-branch-rules
+  namespace: argocd
+spec:
+  project: example-book
+  
+  sources:
+    
+    - repoURL: https://github.com/runik-platform/summon.git
+      path: .
+      targetRevision: upstream
+      helm:
+        
+        valuesObject:
+          name: apply-branch-rules
+          namespace: automation
+          serviceAccount:
+            enabled: false
+          vault:
+            forge-token:
+              keys:
+              - token
+              path: book
+              type: secret
+            policy:
+              paths:
+              - capabilities:
+                - read
+                path: secret/data/example-book/forge-token
+              type: policy
+          workload:
+            enabled: false
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: automation
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+      
+    - repoURL: https://github.com/runik-platform/tarot.git
+      path: .
+      targetRevision: upstream
+      helm:
+        valuesObject:
+          
+          tarot:
+            labels:
+              environment: development
+              process: repository-bootstrap
+            reading:
+              cards:
+                default-branch:
+                  depends:
+                  - initialize
+                  uses: set-default-branch
+                initialize:
+                  uses: initialize-repository
+                  with:
+                    repository: '{{workflow.parameters.repository}}'
+                protection:
+                  depends:
+                  - default-branch
+                  uses: apply-protection
+              inputs:
+                parameters:
+                  repository:
+                    required: true
+            secrets:
+              forge-token:
+                contentType: env
+                name: forge-token
+            with:
+              repository: example/project
+          spellbook:
+            chapters:
+            - infrastructure
+            - services
+            - automation
+            clusterSelector:
+              name: development
+            defaultTrinket:
+              path: .
+              repository: https://github.com/runik-platform/summon.git
+              revision: upstream
+            name: example-book
+            trinkets:
+              kaster:
+                key: glyphs
+                path: .
+                repository: https://github.com/runik-platform/kaster.git
+                revision: upstream
+              tarot:
+                key: tarot
+                path: .
+                repository: https://github.com/runik-platform/tarot.git
+                revision: upstream
+          chapter:
+            name: automation
+            tarot:
+              cards:
+                apply-protection:
+                  container:
+                    args:
+                    - echo apply branch protection
+                    command:
+                    - sh
+                    - -c
+                    image: alpine:3.22
+                initialize-repository:
+                  container:
+                    args:
+                    - echo initialize {{inputs.parameters.repository}}
+                    command:
+                    - sh
+                    - -c
+                    image: alpine:3.22
+                  contract:
+                    inputs:
+                      parameters:
+                        repository:
+                          required: true
+                set-default-branch:
+                  container:
+                    args:
+                    - echo set default branch
+                    command:
+                    - sh
+                    - -c
+                    image: alpine:3.22
+          lexicon:
+            apply-branch-rules:
+              contract:
+                inputs:
+                  parameters:
+                    repository:
+                      required: true
+              labels:
+                process: repository-bootstrap
+                version: v1
+              name: apply-branch-rules
+              scope: namespace
+              type: tarot-reading
+            development-cluster:
+              clusterURL: https://kubernetes.default.svc
+              labels:
+                default: book
+                name: development
+              name: development-cluster
+              type: k8s-cluster
+            development-vault:
+              authPath: example-book
+              databasePath: database
+              labels:
+                default: book
+                scope: global
+              name: development-vault
+              namespace: vault
+              provider: operator
+              secretPath: secret
+              serviceAccount: vault
+              skipVerify: true
+              type: secret-store
+              url: http://vault.vault.svc:8200
+            example-keycloak:
+              keycloakCrdName: keycloak
+              labels:
+                default: book
+                scope: global
+              name: example-keycloak
+              namespace: keycloak
+              realm: example
+              secret: keycloak-access
+              type: keycloak
+              url: http://keycloak.keycloak.svc:8080
+            letsencrypt-staging:
+              email: platform@example.test
+              issuerName: letsencrypt-staging
+              issuerType: aws
+              labels:
+                default: book
+                environment: staging
+                scope: global
+              name: letsencrypt-staging
+              type: cert-issuer
+            pg-infra:
+              clusterName: pg-infra
+              credentialsSecret: pg-infra-superuser
+              database: '*'
+              host: pg-infra-rw.pg-infra.svc
+              labels:
+                default: book
+                name: pg-infra
+                role: shared-infra
+                scope: global
+              managerSuperuser: true
+              name: pg-infra
+              namespace: pg-infra
+              port: "5432"
+              type: postgres
+            repository-created:
+              labels:
+                event: repository-created
+                source: forge
+              name: repository-created
+              parameters:
+                repository:
+                  from: body.repository.full_name
+              readingSelector:
+                process: repository-bootstrap
+                version: v1
+              type: workflow-trigger
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: automation
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2

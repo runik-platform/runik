@@ -1,0 +1,35 @@
+name: example-book
+
+chapters:
+  - infrastructure
+  - services
+  - automation
+
+clusterSelector:
+  name: development
+
+defaultTrinket:
+  repository: https://github.com/runik-platform/summon.git
+  path: .
+  revision: upstream
+
+trinkets:
+  kaster:
+    key: glyphs
+    repository: https://github.com/runik-platform/kaster.git
+    path: .
+    revision: upstream
+  tarot:
+    key: tarot
+    repository: https://github.com/runik-platform/tarot.git
+    path: .
+    revision: upstream
+
+appendix:
+  lexicon:
+    development-cluster:
+      type: k8s-cluster
+      clusterURL: https://kubernetes.default.svc
+      labels:
+        name: development
+        default: book

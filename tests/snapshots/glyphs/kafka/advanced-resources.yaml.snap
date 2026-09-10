@@ -1,0 +1,127 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaBridge
+metadata:
+  name: events-http
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: operations
+    spell: kaster
+spec:
+  replicas: 2
+  bootstrapServers: "events-kafka-bootstrap:9092"
+  http:
+    port: 8080
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaMirrorMaker2
+metadata:
+  name: events-mirror
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: operations
+    spell: kaster
+spec:
+  replicas: 1
+  version: "4.3.1"
+  target:
+    alias: "recovery"
+    bootstrapServers: "recovery-kafka-bootstrap:9092"
+    groupId: "events-mirror"
+    configStorageTopic: "__events-mirror-config"
+    offsetStorageTopic: "__events-mirror-offset"
+    statusStorageTopic: "__events-mirror-status"
+    config:
+      config.storage.replication.factor: 3
+      offset.storage.replication.factor: 3
+      status.storage.replication.factor: 3
+  mirrors:
+    - checkpointConnector:
+        config:
+          checkpoints.topic.replication.factor: 3
+          sync.group.offsets.enabled: "true"
+        tasksMax: 1
+      groupsPattern: .*
+      source:
+        alias: events
+        bootstrapServers: events-kafka-bootstrap:9092
+      sourceConnector:
+        config:
+          offset-syncs.topic.replication.factor: 3
+          replication.factor: 3
+          sync.topic.acls.enabled: "false"
+        tasksMax: 3
+      topicsPattern: .*
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: archive-brokers
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: operations
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  replicas: 3
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+    - id: 0
+      kraftMetadata: shared
+      size: 500Gi
+      type: persistent-claim
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaRebalance
+metadata:
+  name: after-scale-out
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: operations
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  mode: add-brokers
+  brokers:
+    - 6
+    - 7
+    - 8

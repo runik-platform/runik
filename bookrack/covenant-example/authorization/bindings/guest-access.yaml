@@ -1,0 +1,7 @@
+binding:
+  key: guest-access
+  subjects:
+    groups:
+      - guests
+  roleRef: authenticated-user
+

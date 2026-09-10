@@ -1,0 +1,149 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: job-completion-source
+  labels:
+    app.kubernetes.io/name: resource-namespace-scoped-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    job-monitoring:
+      namespace: batch-jobs
+      group: batch
+      version: v1
+      resource: jobs
+      eventTypes:
+        - UPDATE
+      filter:
+        expression: |
+          has(body.status.conditions) &&
+          (body.status.conditions.exists(c, c.type == 'Complete' && c.status == 'True') ||
+           body.status.conditions.exists(c, c.type == 'Failed' && c.status == 'True'))
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: namespace-pod-source
+  labels:
+    app.kubernetes.io/name: resource-namespace-scoped-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    namespace-pod-monitoring:
+      namespace: production-apps
+      version: v1
+      resource: pods
+      eventTypes:
+        - ADD
+        - DELETE
+      filter:
+        labels:
+          - key: app.kubernetes.io/name
+            operation: =
+            value: "critical-app"
+        expression: |
+          has(body.metadata.annotations) &&
+          has(body.metadata.annotations['prometheus.io/scrape']) &&
+          body.metadata.annotations['prometheus.io/scrape'] == 'true'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: job-completion-sensor
+  labels:
+    app.kubernetes.io/name: resource-namespace-scoped-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: job-handler
+  dependencies:
+    
+    - name: job-complete-event
+      eventSourceName: job-completion-source
+      eventName: job-monitoring
+      filters:
+        expression: |
+          body.status.conditions.exists(c, c.type == 'Complete' && c.status == 'True')
+          
+  triggers:
+    - template:
+        name: cleanup-job
+        k8s:
+          group: batch
+          version: v1
+          resource: jobs
+          operation: delete
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: pod-lifecycle-sensor
+  labels:
+    app.kubernetes.io/name: resource-namespace-scoped-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: monitoring-agent
+  dependencies:
+    
+    - name: pod-add-event
+      eventSourceName: namespace-pod-source
+      eventName: namespace-pod-monitoring
+      filters:
+        context:
+          type: ADD
+    - name: pod-delete-event
+      eventSourceName: namespace-pod-source
+      eventName: namespace-pod-monitoring
+      filters:
+        context:
+          type: DELETE
+  triggers:
+    - template:
+        name: send-alert
+        conditions: pod-add-event || pod-delete-event
+        http:
+          url: http://alertmanager.monitoring.svc:9093/api/v1/alerts
+          payload:
+            - dest: pod_name
+              src:
+                dataKey: body.metadata.name
+                dependencyName: pod-add-event
+            - dest: namespace
+              src:
+                dataKey: body.metadata.namespace
+                dependencyName: pod-add-event
+          method: POST

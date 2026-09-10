@@ -1,0 +1,67 @@
+name: vault
+namespace: vault
+
+appParams:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+
+workload:
+  enabled: false
+
+service:
+  enabled: false
+
+serviceAccount:
+  enabled: true
+  automount: true
+
+appendix:
+  lexicon:
+    development-vault:
+      type: secret-store
+      provider: operator
+      url: http://vault.vault.svc:8200
+      namespace: vault
+      serviceAccount: vault
+      authPath: example-book
+      secretPath: secret
+      databasePath: database
+      skipVerify: true
+      labels:
+        scope: global
+        default: book
+
+postgresql:
+  vault:
+    type: db
+    databaseName: vault
+    selector:
+      name: pg-infra
+      scope: global
+    credentials:
+      mode: static
+      username: vault
+      serviceAccount: vault
+      secretName: vault-postgresql
+      rotationPeriod: 2592000
+      refreshPeriod: 3m0s
+
+vault:
+  access:
+    type: prolicy
+  database:
+    type: secretEngineMount
+    mountType: database
+    path: database
+
+freeForm:
+  vault-server:
+    type: manifest
+    definition:
+      apiVersion: vault.banzaicloud.com/v1alpha1
+      kind: Vault
+      metadata:
+        name: vault
+      spec:
+        size: 1
+        image: hashicorp/vault:1.21.1

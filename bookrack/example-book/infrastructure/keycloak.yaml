@@ -1,0 +1,71 @@
+name: keycloak
+namespace: keycloak
+
+appParams:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+
+image:
+  repository: quay.io
+  name: keycloak/keycloak
+  tag: "26.4.7"
+
+command:
+  - /opt/keycloak/bin/kc.sh
+
+args:
+  - start-dev
+
+service:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+
+appendix:
+  lexicon:
+    example-keycloak:
+      type: keycloak
+      name: example-keycloak
+      keycloakCrdName: keycloak
+      url: http://keycloak.keycloak.svc:8080
+      secret: keycloak-access
+      namespace: keycloak
+      realm: example
+      labels:
+        scope: global
+        default: book
+
+postgresql:
+  keycloak:
+    type: db
+    databaseName: keycloak
+    selector:
+      name: pg-infra
+      scope: global
+    credentials:
+      mode: static
+      username: keycloak
+      serviceAccount: keycloak
+      secretName: keycloak-postgresql
+      rotationPeriod: 2592000
+      refreshPeriod: 3m0s
+
+vault:
+  access:
+    type: prolicy
+  keycloak-access:
+    type: secret
+    staticData:
+      username: keycloak
+    randomKey: password
+
+glyphs:
+  keycloak:
+    provider:
+      type: clusterKeycloak
+      name: keycloak
+      url: http://keycloak.keycloak.svc:8080
+      secret: keycloak-access
+      adminType: user
+      insecureSkipVerify: true

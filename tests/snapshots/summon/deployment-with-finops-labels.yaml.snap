@@ -1,0 +1,133 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-service
+  labels:
+    app.kubernetes.io/name: api-service
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: ecommerce-platform
+    chapter: production
+    spell: api-service
+    team: platform-team
+    owner: john.doe
+    cost-center: engineering
+    department: platform
+    project: core-api
+    environment: production
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  labels:
+    app.kubernetes.io/name: api-service
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: ecommerce-platform
+    chapter: production
+    spell: api-service
+    team: platform-team
+    owner: john.doe
+    cost-center: engineering
+    department: platform
+    project: core-api
+    environment: production
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      protocol: TCP
+      name: http
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: api-service
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+  labels:
+    app.kubernetes.io/name: api-service
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: Helm
+    spelbook: ecommerce-platform
+    chapter: production
+    spell: api-service
+    team: platform-team
+    owner: john.doe
+    cost-center: engineering
+    department: platform
+    project: core-api
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-service
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-service
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: api-service
+      containers:
+        
+        - name: api-service-api-service
+          image: myorg/api-service/api-service:v1.2.3
+          imagePullPolicy: IfNotPresent
+          
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "ecommerce-platform"
+            - name: CHAPTER_NAME
+              value: "production"
+            - name: SPELL_NAME
+              value: "api-service"
+          
+            
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

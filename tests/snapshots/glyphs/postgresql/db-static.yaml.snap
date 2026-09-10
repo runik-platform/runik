@@ -1,0 +1,332 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-infra-registry
+  namespace: pg-infra
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: pg-infra
+  name: registry
+  owner: harbor
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: pg-infra-harbor
+  namespace: pg-infra
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: pg-infra
+  name: harbor
+  ensure: present
+  login: true
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: harbor-pg-infra
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - harbor
+  connectionURL: postgresql://{{username}}:{{password}}@pg-infra-rw.pg-infra.svc:5432/postgres
+  passwordAuthentication: "password"
+  rootCredentials:
+    secret:
+      name: pg-infra-vault-mgr-root
+    passwordKey: password
+    usernameKey: username
+  path: db/test-book/registries/harbor
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineStaticRole
+metadata:
+  name: harbor
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: db/test-book/registries/harbor
+  dBName: harbor-pg-infra
+  username: "harbor"
+  rotationPeriod: 2592000
+  rotationStatements:
+    - ALTER ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}';
+  credentialType: password
+  passwordCredentialConfig:
+    passwordPolicy: short-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: harbor
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - harbor
+  targetServiceAccounts:
+    - harbor
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: harbor
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/registries/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/registries/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/registries/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/registries/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "db/test-book/registries/harbor/creds/*" {
+      capabilities = ["read"]
+    }
+    path "db/test-book/registries/harbor/static-creds/*" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/mounts/db/test-book/registries/harbor" {
+      capabilities = ["create","read","update","delete"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: SecretEngineMount
+metadata:
+  name: harbor
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  authentication:
+    path: the-yaml-life
+    role: harbor
+    serviceAccount:
+      name: harbor
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  type: database
+  path: db/test-book/registries
+  description: "Runik database credentials for test-book/registries/harbor"
+  config:
+    listingVisibility: hidden
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: harbor-pg-infra
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: registries
+    spell: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    reloader.stakater.com/match: "true"
+    runik.ing/credentials: static
+    runik.ing/postgresql-cluster: pg-infra
+spec:
+  refreshThreshold: 80
+  refreshPeriod: 1m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: db/test-book/registries/harbor/static-creds/harbor
+      authentication:
+        path: the-yaml-life
+        role: harbor
+        serviceAccount:
+          name: harbor
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: harbor-pg-infra
+    labels:
+      app.kubernetes.io/name: harbor
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: registries
+      spell: harbor
+    annotations:
+      argocd.argoproj.io/sync-wave: "0"
+      reloader.stakater.com/match: "true"
+      runik.ing/credentials: static
+      runik.ing/postgresql-cluster: pg-infra
+    stringData:
+        username: '{{ .secret.username }}'
+        password: '{{ .secret.password }}'
+        database: registry
+        dbname: registry
+        host: pg-infra-rw.pg-infra.svc
+        port: "5432"
+    type: kubernetes.io/basic-auth

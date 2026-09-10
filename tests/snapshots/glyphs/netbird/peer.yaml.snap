@@ -1,0 +1,35 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeer
+metadata:
+  name: edge-peer-01
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  peerRef: "edge-peer-01"
+  approvalRequired: true
+  loginExpirationEnabled: true
+  sshEnabled: false

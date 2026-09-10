@@ -1,0 +1,59 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: iam.services.k8s.aws/v1alpha1
+kind: Policy
+metadata:
+  name: my-cert-manager-route53-policy
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  name: my-cert-manager-route53-policy
+  path: /ack/
+  description: "IAM Policy for cert-manager to manage Route53 DNS records"
+  policyDocument: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["route53:GetChange","route53:ChangeResourceRecordSets","route53:ListResourceRecordSets","route53:ListHostedZones","route53:ListHostedZonesByName"],
+          "Resource": "arn:aws:route53:::hostedzone/*"
+        }
+      ]
+    }
+  tags:
+    - key: Name
+      value: my-cert-manager-route53-policy
+    - key: ManagedBy
+      value: ack-iam-controller
+    - key: Name
+      value: cert-manager-route53-policy
+    - key: ManagedBy
+      value: ack-iam-controller
+    - key: Component
+      value: cert-manager
+    - key: Environment
+      value: dev

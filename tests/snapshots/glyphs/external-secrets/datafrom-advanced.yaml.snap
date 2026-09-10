@@ -1,0 +1,138 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: vault-store
+spec:
+  provider:
+    vault:
+      version: v2
+      server: http://vault.vault.svc:8200
+      path: kv
+      auth:
+        kubernetes:
+          mountPath: k8s-path-auth
+          role: externalsecrets-datafrom-advanced
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: extracted-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: extracted-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+  - extract:
+      conversionStrategy: Default
+      decodingStrategy: Auto
+      key: /production/database/all-credentials
+      property: data
+      version: v2
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: rewritten-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: rewritten-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+  - extract:
+      key: /production/env-vars
+    rewrite:
+    - regexp:
+        source: PROD_(.*)
+        target: APP_${1}
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: tagged-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: tagged-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+  - find:
+      conversionStrategy: Unicode
+      decodingStrategy: Base64
+      name:
+        regexp: .*-config$
+      path: /production/
+      tags:
+        environment: production
+        team: backend
+    rewrite:
+    - regexp:
+        source: (.+)-config
+        target: ${1}_CONFIGURATION
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: combined-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: combined-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+  - extract:
+      key: /production/database
+      property: credentials
+  - extract:
+      key: /production/api-keys
+  - find:
+      name:
+        regexp: .*
+      path: /production/monitoring/

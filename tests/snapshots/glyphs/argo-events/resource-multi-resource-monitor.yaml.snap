@@ -1,0 +1,125 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: configmap-source
+  labels:
+    app.kubernetes.io/name: resource-multi-resource-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    configmap-monitoring:
+      namespace: default
+      version: v1
+      resource: configmaps
+      eventTypes:
+        - ADD
+        - UPDATE
+        - DELETE
+      filter:
+        labels:
+          - key: app.kubernetes.io/managed-by
+            operation: =
+            value: "runik-platform"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: pvc-source
+  labels:
+    app.kubernetes.io/name: resource-multi-resource-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    pvc-monitoring:
+      namespace: default
+      version: v1
+      resource: persistentvolumeclaims
+      eventTypes:
+        - ADD
+      filter:
+        labels:
+          - key: storage-class
+            operation: =
+            value: "fast-ssd"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: statefulset-source
+  labels:
+    app.kubernetes.io/name: resource-multi-resource-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  resource:
+    statefulset-monitoring:
+      namespace: default
+      group: apps
+      version: v1
+      resource: statefulsets
+      eventTypes:
+        - UPDATE
+      filter:
+        expression: |
+          has(body.spec.replicas) &&
+          body.spec.replicas > 0
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: unified-resource-sensor
+  labels:
+    app.kubernetes.io/name: resource-multi-resource-monitor
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-book
+    app.kubernetes.io/managed-by: Helm
+spec:
+  eventBusName: monitoring-eventbus
+  template:
+    serviceAccountName: resource-monitor
+  dependencies:
+    
+    - name: configmap-event
+      eventSourceName: configmap-source
+      eventName: configmap-monitoring
+    - name: statefulset-event
+      eventSourceName: statefulset-source
+      eventName: statefulset-monitoring
+    - name: pvc-event
+      eventSourceName: pvc-source
+      eventName: pvc-monitoring
+  triggers:
+    - template:
+        name: log-resource-event
+        conditions: configmap-event || statefulset-event || pvc-event
+        log:
+          intervalSeconds: 1

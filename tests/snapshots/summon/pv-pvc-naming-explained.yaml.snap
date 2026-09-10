@@ -1,0 +1,376 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pv-naming-demo
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: pv-naming-demo-data1
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+    volume: data1
+spec:
+  storageClassName: "s3-csi"
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: bucket/data1
+    
+    volumeAttributes:
+      mounter: "geesefs"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: my-custom-pvc
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+    volume: data2
+spec:
+  storageClassName: "s3-csi"
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: bucket/data2
+    
+    volumeAttributes:
+      mounter: "geesefs"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: specific-pv-name
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+    volume: data3
+spec:
+  storageClassName: "s3-csi"
+  capacity:
+    storage: 30Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: bucket/data3
+    
+    volumeAttributes:
+      mounter: "geesefs"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: custom-pv-name
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+    volume: data4
+spec:
+  storageClassName: "s3-csi"
+  capacity:
+    storage: 40Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: bucket/data4
+    
+    volumeAttributes:
+      mounter: "geesefs"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-naming-demo-data1
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  volumeName: pv-naming-demo-data1
+  
+  storageClassName: "s3-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-custom-pvc
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  volumeName: my-custom-pvc
+  
+  storageClassName: "s3-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-naming-demo-data3
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  volumeName: specific-pv-name
+  
+  storageClassName: "s3-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: custom-pvc-name
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  volumeName: custom-pv-name
+  
+  storageClassName: "s3-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 40Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-naming-demo-dynamic
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-naming-demo-preexisting
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  
+  volumeName: already-existing-pv
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pv-naming-demo
+  labels:
+    app.kubernetes.io/name: pv-naming-demo
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-naming-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pv-naming-demo
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pv-naming-demo
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: pv-naming-demo
+      containers:
+        
+        - name: pv-naming-demo-pv-naming-demo
+          image: nginx/pv-naming-demo:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          volumeMounts:
+          
+            - name: data1
+              mountPath: /data1
+            - name: data2
+              mountPath: /data2
+            - name: data3
+              mountPath: /data3
+            - name: data4
+              mountPath: /data4
+            - name: dynamic
+              mountPath: /dynamic
+            - name: preexisting
+              mountPath: /preexisting
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "pv-naming-demo"
+          
+      
+      volumes:
+      
+        - name: data1
+          persistentVolumeClaim:
+            claimName: pv-naming-demo-data1
+        - name: data2
+          persistentVolumeClaim:
+            claimName: my-custom-pvc
+        - name: data3
+          persistentVolumeClaim:
+            claimName: pv-naming-demo-data3
+        - name: data4
+          persistentVolumeClaim:
+            claimName: custom-pvc-name
+        - name: dynamic
+          persistentVolumeClaim:
+            claimName: pv-naming-demo-dynamic
+        - name: preexisting
+          persistentVolumeClaim:
+            claimName: pv-naming-demo-preexisting
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

@@ -1,0 +1,143 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1alpha1
+kind: ClusterKeycloakRealm
+metadata:
+  name: realm-false
+  labels:
+    app.kubernetes.io/name: keycloak-boolean-false
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmName: false-test
+  clusterKeycloakRef: keycloak
+  themes:
+    accountTheme: keycloak.v2
+    adminConsoleTheme: keycloak.v2
+    emailTheme: keycloak
+    loginTheme: keycloak
+  sessions:
+    ssoSessionSettings:
+      idleTimeout: 1800
+      maxLifespan: 36000
+  realmEventConfig:
+    adminEventsDetailsEnabled: false
+    adminEventsEnabled: false
+    eventsEnabled: false
+    eventsExpiration: 15000
+    eventsListeners:
+      - jboss-logging
+  tokenSettings:
+    accessCodeLifespan: 300
+    accessToken: 300
+    accessTokenLifespan: 300
+    actionTokenGeneratedByAdminLifespan: 300
+    actionTokenGeneratedByUserLifespan: 300
+    defaultSignatureAlgorithm: RS256
+    refreshTokenMaxReuse: 0
+    revokeRefreshToken: false
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakAuthFlow
+metadata:
+  name: child-flow
+  labels:
+    app.kubernetes.io/name: keycloak-boolean-false
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  alias: child-flow
+  builtIn: false
+  providerId: basic-flow
+  topLevel: false
+  realmRef:
+    name: realm-false
+    kind: ClusterKeycloakRealm
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: public-client
+  labels:
+    app.kubernetes.io/name: keycloak-boolean-false
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: realm-false
+    kind: ClusterKeycloakRealm
+  advancedProtocolMappers: true
+  clientId: public-client
+  directAccess: false
+  public: true
+  webUrl: https://public.example.test
+  standardFlowEnabled: false
+  authorizationServicesEnabled: true
+  attributes:
+    oauth2.device.authorization.grant.enabled: "false"
+    pkce.code.challenge.method: "S256"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmIdentityProvider
+metadata:
+  name: disabled-idp
+  labels:
+    app.kubernetes.io/name: keycloak-boolean-false
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: realm-false
+    kind: ClusterKeycloakRealm
+  alias: disabled-idp
+  enabled: false
+  providerId: oidc
+  trustEmail: false
+  storeToken: false
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmUser
+metadata:
+  name: user-false
+  labels:
+    app.kubernetes.io/name: keycloak-boolean-false
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: realm-false
+    kind: ClusterKeycloakRealm
+  username: disabled@example.test
+  email: disabled@example.test
+  enabled: false
+  emailVerified: false
+  keepResource: true
+  clientRoles:
+    - clientId: public-client
+      roles:
+      - reader

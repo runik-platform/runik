@@ -1,0 +1,7 @@
+role:
+  key: console-readonly
+  grants:
+    applicationRoles:
+      - application: console
+        role: readonly
+

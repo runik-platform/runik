@@ -1,0 +1,175 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+##
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# ---
+# apiVersion: iam.services.k8s.aws/v1alpha1
+# kind: Role
+# metadata:
+#   name: my-ack-rds-controller
+#   namespace: ack-system
+#   labels:
+#
+    app.kubernetes.io/name: ack-rds-controller-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: ack-rds-controller-test
+#     app.kubernetes.io/component: ack-rds-controller
+#
+# spec:
+#   name: my-ack-rds-controller
+#   path: /ack/
+#   description: "IAM Role for ack-rds-controller"
+#
+#   permissionsBoundary: arn:aws:iam::123456789012:policy/my-permissions-boundary
+#
+#   assumeRolePolicyDocument: |
+#     {
+#       "Version": "2012-10-17",
+#       "Statement": [
+#         {
+#           "Effect": "Allow",
+#           "Principal": {
+#             "Federated": "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890"
+#           },
+#           "Action": "sts:AssumeRoleWithWebIdentity",
+#           "Condition": {
+#             "StringEquals": {
+#               "oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890:sub": "system:serviceaccount:ack-system:ack-rds-controller",
+#               "oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890:aud": "sts.amazonaws.com"
+#             }
+#           }
+#         }
+#       ]
+#     }
+#   policies:
+#     - arn:aws:iam::123456789012:policy/ack/my-ack-rds-controller-iam-policy
+#
+#   tags:
+#
+#     - key: Name
+#       value: my-ack-rds-controller
+#
+#     - key: ManagedBy
+#       value: ack-iam-controller
+#
+#     - key: Environment
+#       value: dev
+#
+#
+# ---
+# apiVersion: iam.services.k8s.aws/v1alpha1
+# kind: Policy
+# metadata:
+#   name: my-ack-rds-controller-iam-policy
+#   namespace: ack-system
+#   labels:
+#
+    app.kubernetes.io/name: ack-rds-controller-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: ack-rds-controller-test
+#     app.kubernetes.io/component: ack-rds-controller
+#
+# spec:
+#   name: my-ack-rds-controller-iam-policy
+#   path: /ack/
+#   description: "IAM Policy for ack-rds-controller to manage RDS resources"
+#   policyDocument: |
+#     {
+#       "Version": "2012-10-17",
+#       "Statement": [
+#         {
+#           "Effect": "Allow",
+#           "Action": [
+#             "rds:CreateDBInstance",
+#             "rds:DeleteDBInstance",
+#             "rds:DescribeDBInstances",
+#             "rds:ModifyDBInstance",
+#             "rds:RebootDBInstance",
+#             "rds:StartDBInstance",
+#             "rds:StopDBInstance",
+#             "rds:CreateDBSubnetGroup",
+#             "rds:DeleteDBSubnetGroup",
+#             "rds:DescribeDBSubnetGroups",
+#             "rds:ModifyDBSubnetGroup",
+#             "rds:CreateDBParameterGroup",
+#             "rds:DeleteDBParameterGroup",
+#             "rds:DescribeDBParameterGroups",
+#             "rds:ModifyDBParameterGroup",
+#             "rds:DescribeDBParameters",
+#             "rds:CreateDBSnapshot",
+#             "rds:DeleteDBSnapshot",
+#             "rds:DescribeDBSnapshots",
+#             "rds:AddTagsToResource",
+#             "rds:ListTagsForResource",
+#             "rds:RemoveTagsFromResource",
+#             "ec2:DescribeSecurityGroups",
+#             "ec2:DescribeSubnets",
+#             "ec2:DescribeVpcs",
+#             "iam:CreateRole",
+#             "iam:DeleteRole",
+#             "iam:UpdateRole",
+#             "iam:TagRole",
+#             "iam:UntagRole",
+#             "iam:PutRolePolicy",
+#             "iam:AttachRolePolicy",
+#             "iam:DetachRolePolicy",
+#             "kms:CreateGrant",
+#             "kms:DescribeKey",
+#             "kms:Decrypt",
+#             "kms:Encrypt",
+#             "kms:GenerateDataKey",
+#             "kms:GenerateDataKeyWithoutPlaintext",
+#             "kms:ReEncryptFrom",
+#             "kms:ReEncryptTo"
+#           ],
+#           "Resource": "*"
+#         }
+#       ]
+#     }
+#
+#   tags:
+#
+#     - key: Name
+#       value: my-ack-rds-controller
+#
+#     - key: ManagedBy
+#       value: ack-iam-controller
+#
+#     - key: Environment
+#       value: dev
+#
+#
+#
+#

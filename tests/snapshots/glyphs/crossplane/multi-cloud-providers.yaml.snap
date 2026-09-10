@@ -1,0 +1,64 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: infrastructure
+    app.kubernetes.io/managed-by: Helm
+    spelbook: infrastructure
+    chapter: multi-cloud
+    spell: kaster
+spec:
+  package: "crossplane/provider-aws:v0.39.0"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: infrastructure
+    app.kubernetes.io/managed-by: Helm
+    spelbook: infrastructure
+    chapter: multi-cloud
+    spell: kaster
+spec:
+  package: "crossplane/provider-azure:v0.19.0"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: infrastructure
+    app.kubernetes.io/managed-by: Helm
+    spelbook: infrastructure
+    chapter: multi-cloud
+    spell: kaster
+spec:
+  package: "crossplane/provider-gcp:v0.22.0"

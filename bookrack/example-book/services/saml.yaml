@@ -1,0 +1,22 @@
+name: saml
+namespace: saml
+
+image:
+  tag: v2.0.0
+
+service:
+  external: true
+  prefix: /
+
+covenant:
+  clients:
+    example:
+      type: saml
+      clientId: https://saml.example.test/metadata
+      webUrl: https://saml.example.test
+      attributes:
+        saml.assertion.signature: "true"
+        saml.force.post.binding: "true"
+      certificate:
+        dnsNames:
+          - saml.example.test

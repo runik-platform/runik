@@ -1,0 +1,71 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: integrations
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: integrations
+    spell: kaster
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: 2
+  bootstrapServers: "events-kafka-bootstrap.kafka.svc:9093"
+  groupId: "integrations"
+  configStorageTopic: "__integrations-config"
+  offsetStorageTopic: "__integrations-offset"
+  statusStorageTopic: "__integrations-status"
+  version: "4.3.1"
+  config:
+    config.storage.replication.factor: 3
+    offset.storage.replication.factor: 3
+    status.storage.replication.factor: 3
+  tls:
+    trustedCertificates:
+    - certificate: ca.crt
+      secretName: events-cluster-ca-cert
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: object-store-sink
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: integrations
+    spell: kaster
+    strimzi.io/cluster: integrations
+spec:
+  class: "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector"
+  tasksMax: 3
+  config:
+    aws.s3.bucket.name: audit-archive
+    topics: audit-events
+  autoRestart:
+    enabled: true

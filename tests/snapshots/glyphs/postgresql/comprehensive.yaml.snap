@@ -1,0 +1,81 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: production-db
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  description: Production PostgreSQL cluster with custom configuration
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+
+  instances: 3
+  startDelay: 3000
+  stopDelay: 100
+  primaryUpdateStrategy: supervised
+  managed:
+     roles:
+      - comment: Application database user
+        connectionLimit: -1
+        createdb: true
+        createrole: false
+        ensure: present
+        inherit: true
+        login: true
+        name: app-user
+        passwordSecret:
+          name: app-user-password
+        superuser: false
+
+  enableSuperuserAccess: true
+  bootstrap:
+    initdb:
+      database: production_db
+      owner: app-user
+      secret:
+        name: db-credentials
+
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - name: db-init-sql
+            key: db-init-sql
+
+  storage:
+    storageClass: fast-ssd
+    size: 20Gi
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+  postgresql:
+    parameters:
+      effective_cache_size: 3GB
+      max_connections: "200"
+      shared_buffers: 1GB
+      work_mem: 5242kB

@@ -1,0 +1,54 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: test-client-vault
+  labels:
+    app.kubernetes.io/name: keycloak-basic-client
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  advancedProtocolMappers: true
+  clientId: vault
+  directAccess: true
+  protocol: openid-connect
+  secret: $keycloak-client-test-client-vault:client_secret
+  webUrl: https://vault.test.local
+  standardFlowEnabled: true
+  attributes:
+    post.logout.redirect.uris: https://vault.test.local/ui/logout
+    oauth2.device.authorization.grant.enabled: "true"
+    protocol: openid-connect
+  defaultClientScopes:
+    - profile
+    - email
+    - roles
+  redirectUris:
+    - https://vault.test.local/ui/vault/auth/oidc/oidc/callback
+    - https://vault.test.local/oidc/callback
+  optionalClientScopes:
+    - address
+    - phone
+  webOrigins:
+    - https://vault.test.local

@@ -1,0 +1,113 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: test-external-gateway
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - api.platform.com
+  gateways:
+    - istio-system/external-gateway
+  http:
+    - match:
+      - uri:
+          prefix: /v1
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: api-v1-service.production.svc.cluster.local
+            port:
+              number: 8080
+    - match:
+      - uri:
+          prefix: /health
+      route:
+        - destination:
+            host: api-v1-service.production.svc.cluster.local
+            port:
+              number: 9090
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: test-internal-gateway
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - internal.platform.com
+  gateways:
+    - istio-system/internal-gateway
+  http:
+    - match:
+      - uri:
+          prefix: /internal/api
+      rewrite:
+        uri: /api
+      route:
+        - destination:
+            host: backend-service.production.svc.cluster.local
+            port:
+              number: 8080
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: test-external-gateway
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-platform
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hosts:
+    - legacy.platform.com
+  gateways:
+    - istio-system/external-gateway
+  http:
+    - match:
+      - uri:
+          prefix: /old-path
+      rewrite:
+        uri: /new-path
+      route:
+        - destination:
+            host: test.glyphs-release.svc.cluster.local
+            port:
+              number: 80
+    - match:
+      - uri:
+          prefix: /
+      route:
+        - destination:
+            host: test.glyphs-release.svc.cluster.local
+            port:
+              number: 80

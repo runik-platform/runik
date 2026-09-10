@@ -1,0 +1,151 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+  annotations:
+    
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/postgres-backup
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      protocol: TCP
+      name: postgres
+      targetPort: 5432
+  selector:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: summon
+spec:
+  replicas: 3
+  serviceName: test
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: test
+      containers:
+        
+        - name: test-main
+          image: postgres:13
+          imagePullPolicy: IfNotPresent
+          
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          
+          volumeMounts:
+          
+            - name: backup
+              mountPath: /backups
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "test"
+            - name: POSTGRES_DB
+              value: "myapp"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: POSTGRES_USER
+              value: "appuser"
+          
+            
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+      
+  volumeClaimTemplates:
+    - metadata:
+        name: backup
+      spec:
+        storageClassName: backup-storage
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
+    - metadata:
+        name: data
+      spec:
+        storageClassName: fast-ssd
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

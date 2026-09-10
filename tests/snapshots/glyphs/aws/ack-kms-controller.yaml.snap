@@ -1,0 +1,159 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+##
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# ---
+# apiVersion: iam.services.k8s.aws/v1alpha1
+# kind: Role
+# metadata:
+#   name: my-ack-kms-controller
+#   namespace: ack-system
+#   labels:
+#
+    app.kubernetes.io/name: ack-kms-controller-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: ack-kms-controller-test
+#     app.kubernetes.io/component: ack-kms-controller
+#
+# spec:
+#   name: my-ack-kms-controller
+#   path: /ack/
+#   description: "IAM Role for ack-kms-controller"
+#
+#   permissionsBoundary: arn:aws:iam::123456789012:policy/my-permissions-boundary
+#
+#   assumeRolePolicyDocument: |
+#     {
+#       "Version": "2012-10-17",
+#       "Statement": [
+#         {
+#           "Effect": "Allow",
+#           "Principal": {
+#             "Federated": "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890"
+#           },
+#           "Action": "sts:AssumeRoleWithWebIdentity",
+#           "Condition": {
+#             "StringEquals": {
+#               "oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890:sub": "system:serviceaccount:ack-system:ack-kms-controller",
+#               "oidc.eks.us-west-1.amazonaws.com/id/EXAMPLEOIDCID1234567890:aud": "sts.amazonaws.com"
+#             }
+#           }
+#         }
+#       ]
+#     }
+#   policies:
+#     - arn:aws:iam::123456789012:policy/ack/my-ack-kms-controller-iam-policy
+#
+#   tags:
+#
+#     - key: Name
+#       value: my-ack-kms-controller
+#
+#     - key: ManagedBy
+#       value: ack-iam-controller
+#
+#     - key: Environment
+#       value: dev
+#
+#
+# ---
+# apiVersion: iam.services.k8s.aws/v1alpha1
+# kind: Policy
+# metadata:
+#   name: my-ack-kms-controller-iam-policy
+#   namespace: ack-system
+#   labels:
+#
+    app.kubernetes.io/name: ack-kms-controller-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: ack-kms-controller-test
+#     app.kubernetes.io/component: ack-kms-controller
+#
+# spec:
+#   name: my-ack-kms-controller-iam-policy
+#   path: /ack/
+#   description: "IAM Policy for ack-kms-controller to manage KMS keys"
+#   policyDocument: |
+#     {
+#       "Version": "2012-10-17",
+#       "Statement": [
+#         {
+#           "Effect": "Allow",
+#           "Action": [
+#             "kms:CreateKey",
+#             "kms:DeleteKey",
+#             "kms:DescribeKey",
+#             "kms:EnableKey",
+#             "kms:DisableKey",
+#             "kms:EnableKeyRotation",
+#             "kms:DisableKeyRotation",
+#             "kms:GetKeyPolicy",
+#             "kms:GetKeyRotationStatus",
+#             "kms:ListKeys",
+#             "kms:ListAliases",
+#             "kms:ListResourceTags",
+#             "kms:PutKeyPolicy",
+#             "kms:ScheduleKeyDeletion",
+#             "kms:CancelKeyDeletion",
+#             "kms:TagResource",
+#             "kms:UntagResource",
+#             "kms:UpdateKeyDescription",
+#             "kms:CreateAlias",
+#             "kms:DeleteAlias",
+#             "kms:UpdateAlias",
+#             "kms:CreateGrant",
+#             "kms:ListGrants",
+#             "kms:RetireGrant",
+#             "kms:RevokeGrant"
+#           ],
+#           "Resource": "*"
+#         }
+#       ]
+#     }
+#
+#   tags:
+#
+#     - key: Name
+#       value: my-ack-kms-controller
+#
+#     - key: ManagedBy
+#       value: ack-iam-controller
+#
+#     - key: Environment
+#       value: dev
+#
+#
+#
+#

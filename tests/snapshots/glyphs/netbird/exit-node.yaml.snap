@@ -1,0 +1,76 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: managed-client-egress-peer-access
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "managed-client-egress-peer-access"
+  description: "Permit clients to reach exit-node peers for managed-client-egress"
+  enabled: true
+  state: "present"
+  sourceGroupRefs:
+    - "roaming-clients"
+  destinationGroupRefs:
+    - "exit-routers"
+  sourcePostureCheckRefs:
+    - "managed-device"
+  rules:
+    - name: icmp
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: icmp
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: managed-client-egress
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  description: "Exit node managed-client-egress"
+  networkId: "managed-client-egress"
+  network: "0.0.0.0/0"
+  peerGroupRefs:
+    - "exit-routers"
+  groupRefs:
+    - "roaming-clients"
+  accessControlGroupRefs:
+    - "roaming-clients"
+  enabled: true
+  masquerade: true
+  metric: 100
+  keepRoute: false
+  skipAutoApply: true

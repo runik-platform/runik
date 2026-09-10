@@ -1,0 +1,8 @@
+binding:
+  key: kim-on-call
+  subjects:
+    principals:
+      - kim-pyne
+  roleRef: console-readonly
+  reason: On-call read access
+

@@ -1,0 +1,7 @@
+principal:
+  name: suspended
+  status: suspended
+  emailVerified: false
+  memberOf:
+    - guests
+

@@ -1,0 +1,47 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetworkRouter
+metadata:
+  name: production
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  dnsZoneRef:
+    name: "prod.company.internal"
+  logLevel: "info"
+  workloadOverride:
+    podTemplate:
+      spec:
+        containers:
+        - name: netbird
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+        nodeSelector:
+          role: edge
+    replicas: 3

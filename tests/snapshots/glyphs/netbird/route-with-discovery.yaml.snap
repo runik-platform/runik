@@ -1,0 +1,41 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: office-subnet
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: my-app
+    app.kubernetes.io/managed-by: Helm
+    spelbook: my-app
+    chapter: production
+    spell: kaster
+spec:
+  description: "Office 10.50.0.0/16 via router group"
+  networkId: "office-net"
+  network: "10.50.0.0/16"
+  peerGroupRefs:
+    - "routers"
+  groupRefs:
+    - "employees"
+  enabled: true
+  masquerade: true
+  metric: 100

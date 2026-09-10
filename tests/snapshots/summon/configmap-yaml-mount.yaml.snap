@@ -1,0 +1,117 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-with-configmap-yaml
+  labels:
+    app.kubernetes.io/name: app-with-configmap-yaml
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-configmap-yaml
+---
+# Source: summon/templates/summon.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: buildarr-yml
+  labels:
+    app.kubernetes.io/name: app-with-configmap-yaml
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-configmap-yaml
+data:
+  
+  buildarr-yml: |
+    buildarr:
+      log_level: DEBUG
+      servers:
+        sonarr:
+          hostname: sonarr.local
+          port: 8989
+      update_times:
+      - "03:00"
+      watch_config: true
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-with-configmap-yaml
+  labels:
+    app.kubernetes.io/name: app-with-configmap-yaml
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: app-with-configmap-yaml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: app-with-configmap-yaml
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: app-with-configmap-yaml
+        app.kubernetes.io/instance: test
+      
+      annotations:
+        checksum/configmap-buildarr-config: 8634678548b0d4ec1a75d23315318033406bce0b717dd16979b89d94fa1e58a6
+    spec:
+      serviceAccountName: app-with-configmap-yaml
+      containers:
+        
+        - name: app-with-configmap-yaml-app-with-configmap-yaml
+          image: nginx/app-with-configmap-yaml:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          volumeMounts:
+          
+            - name: buildarr-yml
+              
+              mountPath: /config/buildarr.yml
+              
+              subPath: buildarr-yml
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "app-with-configmap-yaml"
+          
+      
+      volumes:
+      
+        - name: buildarr-yml
+          configMap:
+            name: buildarr-yml
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

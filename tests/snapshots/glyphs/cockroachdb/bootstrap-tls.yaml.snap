@@ -1,0 +1,188 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: crdb-secure
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: secure-bootstrap
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: infrastructure
+    spell: secure-bootstrap
+spec:
+  authentication:
+    path: test-book
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - '*'
+  connectionURL: postgresql://{{username}}:{{password}}@crdb-secure-public.cockroachdb.svc:26257/defaultdb?sslmode=require
+  passwordAuthentication: "password"
+  verifyConnection: true
+  rootCredentials:
+    secret:
+      name: crdb-secure-vault-manager-root
+    passwordKey: password
+    usernameKey: username
+  path: database
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: crdb-secure-vault-manager
+  namespace: cockroachdb
+  labels:
+    app.kubernetes.io/name: secure-bootstrap
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: infrastructure
+    spell: secure-bootstrap
+  annotations:
+    
+    runik.ing/cockroachdb-cluster: crdb-secure
+spec:
+  authentication:
+    path: test-book
+    role: crdb-secure
+    serviceAccount:
+      name: crdb-secure
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  kvSecretRetainPolicy: Retain
+  path: secret/data/test-book/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: crdb-secure-vault-manager
+  namespace: cockroachdb
+  labels:
+    app.kubernetes.io/name: secure-bootstrap
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: infrastructure
+    spell: secure-bootstrap
+  annotations:
+    runik.ing/cockroachdb-cluster: crdb-secure
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secret/data/test-book/publics/crdb-secure-vault-manager
+      authentication:
+        path: test-book
+        role: crdb-secure
+        serviceAccount:
+          name: crdb-secure
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: crdb-secure-vault-manager
+    labels:
+      app.kubernetes.io/name: secure-bootstrap
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: infrastructure
+      spell: secure-bootstrap
+    annotations:
+      runik.ing/cockroachdb-cluster: crdb-secure
+    stringData:
+        username: vault_mgr
+        bootstrap.sql: "CREATE ROLE IF NOT EXISTS \"vault_mgr\" WITH LOGIN PASSWORD '{{ .secret.password }}' CREATEDB CREATEROLE CREATELOGIN;\nALTER ROLE \"vault_mgr\" WITH LOGIN PASSWORD '{{ .secret.password }}' CREATEDB CREATEROLE CREATELOGIN;"
+        password: '{{ .secret.password }}'
+    type: kubernetes.io/basic-auth
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: crdb-secure-vault-manager-root
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: secure-bootstrap
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: infrastructure
+    spell: secure-bootstrap
+  annotations:
+    runik.ing/cockroachdb-cluster: crdb-secure
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secret/data/test-book/publics/crdb-secure-vault-manager
+      authentication:
+        path: test-book
+        role: vault
+        serviceAccount:
+          name: vault
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: crdb-secure-vault-manager-root
+    labels:
+      app.kubernetes.io/name: secure-bootstrap
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: infrastructure
+      spell: secure-bootstrap
+    annotations:
+      runik.ing/cockroachdb-cluster: crdb-secure
+    stringData:
+        password: '{{ .secret.password }}'
+        username: vault_mgr
+    type: kubernetes.io/basic-auth

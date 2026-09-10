@@ -1,0 +1,196 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineStaticRole
+metadata:
+  name: crdb-infra-huly
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: datalake
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: datalake
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: database
+  dBName: crdb-infra
+  username: "huly"
+  rotationPeriod: 86400
+  rotationStatements:
+    - CREATE DATABASE IF NOT EXISTS "huly";
+    - CREATE ROLE IF NOT EXISTS "{{name}}" WITH LOGIN;
+    - GRANT ALL ON DATABASE "huly" TO "{{name}}";
+  credentialType: password
+  passwordCredentialConfig:
+    {}
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: huly
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: datalake
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: datalake
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: the-yaml-life
+  policies:
+    - huly
+  targetServiceAccounts:
+    - huly
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: huly
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: datalake
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: datalake
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/the-yaml-life/huly/huly/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/the-yaml-life/huly/huly/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/the-yaml-life/huly/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/huly/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/the-yaml-life/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/the-yaml-life/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "database/creds/*" {
+      capabilities = ["read"]
+    }
+    path "database/static-creds/crdb-infra-huly" {
+      capabilities = ["read"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: datalake
+  labels:
+    app.kubernetes.io/name: datalake
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: the-yaml-life
+    app.kubernetes.io/managed-by: Helm
+    spelbook: the-yaml-life
+    chapter: huly
+    spell: datalake
+  annotations:
+    runik.ing/cockroachdb-cluster: crdb-infra
+spec:
+  refreshThreshold: 80
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: database/static-creds/crdb-infra-huly
+      authentication:
+        path: the-yaml-life
+        role: huly
+        serviceAccount:
+          name: huly
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: datalake
+    labels:
+      app.kubernetes.io/name: datalake
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: the-yaml-life
+      app.kubernetes.io/managed-by: Helm
+      spelbook: the-yaml-life
+      chapter: huly
+      spell: datalake
+    annotations:
+      runik.ing/cockroachdb-cluster: crdb-infra
+    stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
+        USERNAME: '{{ .secret.username }}'
+        PASSWORD: '{{ .secret.password }}'
+        DATABASE: huly
+        DBNAME: huly
+        HOST: crdb-infra-public.crdb-infra.svc
+        PORT: "26257"
+        SSLMODE: disable
+    type: Opaque

@@ -1,0 +1,15 @@
+clientScope:
+  key: groups
+  description: Groups claim
+  protocol: openid-connect
+  default: true
+  protocolMappers:
+    - name: groups
+      protocol: openid-connect
+      protocolMapper: oidc-group-membership-mapper
+      config:
+        full.path: "false"
+        claim.name: groups
+        access.token.claim: "true"
+        id.token.claim: "true"
+

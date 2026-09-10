@@ -1,0 +1,37 @@
+organization:
+  name: example
+
+realm:
+  name: example
+  domain: example.test
+  displayName: Covenant Example
+  passwordPolicy:
+    - type: length
+      value: "12"
+  eventConfig:
+    eventsEnabled: false
+    adminEventsEnabled: false
+    adminEventsDetailsEnabled: false
+  tokenSettings:
+    accessTokenLifespan: 900
+    revokeRefreshToken: false
+  sessions:
+    ssoSessionSettings:
+      idleTimeout: 1800
+      maxLifespan: 36000
+    ssoOfflineSessionSettings:
+      idleTimeout: 2592000
+  themes:
+    loginTheme: keycloak
+    accountTheme: keycloak.v2
+    adminConsoleTheme: keycloak.v2
+    emailTheme: keycloak
+
+sources:
+  applicationBooks:
+    - name: example-book
+
+principalDefaults:
+  initialPassword:
+    enabled: true
+    temporary: true

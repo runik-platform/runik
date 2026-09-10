@@ -1,0 +1,7 @@
+principal:
+  name: hesh
+  memberOf:
+    - engineering
+  initialPassword:
+    enabled: false
+

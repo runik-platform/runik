@@ -1,0 +1,71 @@
+name: apply-branch-rules
+namespace: automation
+
+serviceAccount:
+  enabled: false
+
+workload:
+  enabled: false
+
+vault:
+  policy:
+    type: policy
+    paths:
+      - path: secret/data/example-book/forge-token
+        capabilities: [read]
+  forge-token:
+    type: secret
+    path: book
+    keys: [token]
+
+appendix:
+  lexicon:
+    repository-created:
+      type: workflow-trigger
+      labels:
+        source: forge
+        event: repository-created
+      readingSelector:
+        process: repository-bootstrap
+        version: v1
+      parameters:
+        repository:
+          from: body.repository.full_name
+    apply-branch-rules:
+      type: tarot-reading
+      scope: namespace
+      labels:
+        process: repository-bootstrap
+        version: v1
+      contract:
+        inputs:
+          parameters:
+            repository:
+              required: true
+
+tarot:
+  secrets:
+    forge-token:
+      name: forge-token
+      contentType: env
+  with:
+    repository: example/project
+  reading:
+    inputs:
+      parameters:
+        repository:
+          required: true
+    cards:
+      initialize:
+        uses: initialize-repository
+        with:
+          repository: "{{workflow.parameters.repository}}"
+      default-branch:
+        uses: set-default-branch
+        depends: [initialize]
+      protection:
+        uses: apply-protection
+        depends: [default-branch]
+  labels:
+    process: repository-bootstrap
+    environment: development

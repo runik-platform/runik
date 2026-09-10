@@ -1,0 +1,44 @@
+name: pg-infra
+namespace: pg-infra
+
+appParams:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+
+workload:
+  enabled: false
+
+service:
+  enabled: false
+
+serviceAccount:
+  enabled: true
+
+appendix:
+  lexicon:
+    pg-infra:
+      type: postgres
+      clusterName: pg-infra
+      namespace: pg-infra
+      host: pg-infra-rw.pg-infra.svc
+      port: "5432"
+      database: "*"
+      credentialsSecret: pg-infra-superuser
+      managerSuperuser: true
+      labels:
+        name: pg-infra
+        role: shared-infra
+        scope: global
+        default: book
+
+postgresql:
+  pg-infra:
+    type: cluster
+    instances: 1
+    storage:
+      size: 1Gi
+    enableSuperuserAccess: true
+    backup:
+      enabled: false
+    dbEngine:
+      enabled: false

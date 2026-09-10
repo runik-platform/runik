@@ -1,0 +1,355 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pv-showcase
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: pv-showcase-azure-files
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+    volume: azure-files
+spec:
+  storageClassName: "azurefile-csi"
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: file.csi.azure.com
+    volumeHandle: azure-share-001
+    
+    volumeAttributes:
+      resourceGroup: "myResourceGroup"
+      shareName: "myshare"
+      storageAccount: "mystorageaccount"
+    
+    nodeStageSecretRef:
+      name: azure-secret
+      namespace: glyphs-release
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: pv-showcase-gcp-filestore
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+    volume: gcp-filestore
+spec:
+  storageClassName: "filestore-csi"
+  capacity:
+    storage: 1Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: filestore.csi.storage.gke.io
+    volumeHandle: filestore-instance-1/vol1
+    
+    volumeAttributes:
+      ip: "10.0.0.2"
+      volume: "vol1"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: pv-showcase-nfs-csi
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+    volume: nfs-csi
+spec:
+  storageClassName: "nfs-csi"
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: nfs.csi.k8s.io
+    volumeHandle: nfs-server.example.com/exports/data
+    
+    volumeAttributes:
+      server: "nfs-server.example.com"
+      share: "/exports/data"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    
+  name: pv-showcase-s3-storage
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+    volume: s3-storage
+spec:
+  storageClassName: "csi-s3"
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  csi:
+    
+    driver: ru.yandex.s3.csi
+    volumeHandle: my-s3-bucket/data
+    
+    volumeAttributes:
+      bucket: "my-s3-bucket"
+      mounter: "geesefs"
+      options: "--memory-limit 2000 --dir-mode 0755 --file-mode 0644"
+      region: "us-west-2"
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-showcase-azure-files
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  
+  volumeName: pv-showcase-azure-files
+  
+  storageClassName: "azurefile-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-showcase-gcp-filestore
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  
+  volumeName: pv-showcase-gcp-filestore
+  
+  storageClassName: "filestore-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Ti
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-showcase-nfs-csi
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  
+  volumeName: pv-showcase-nfs-csi
+  
+  storageClassName: "nfs-csi"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-showcase-s3-storage
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  
+  volumeName: pv-showcase-s3-storage
+  
+  storageClassName: "csi-s3"
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pv-showcase
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pv-showcase
+  labels:
+    app.kubernetes.io/name: pv-showcase
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: pv-showcase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pv-showcase
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pv-showcase
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: pv-showcase
+      containers:
+        
+        - name: pv-showcase-pv-showcase
+          image: busybox/pv-showcase:latest
+          imagePullPolicy: IfNotPresent
+          
+          
+          volumeMounts:
+          
+            - name: azure-files
+              mountPath: /mnt/azure
+            - name: gcp-filestore
+              mountPath: /mnt/gcp
+            - name: nfs-csi
+              mountPath: /mnt/nfs
+            - name: s3-storage
+              mountPath: /mnt/s3
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "pv-showcase"
+          
+      
+      volumes:
+      
+        - name: azure-files
+          persistentVolumeClaim:
+            claimName: pv-showcase-azure-files
+        - name: gcp-filestore
+          persistentVolumeClaim:
+            claimName: pv-showcase-gcp-filestore
+        - name: nfs-csi
+          persistentVolumeClaim:
+            claimName: pv-showcase-nfs-csi
+        - name: s3-storage
+          persistentVolumeClaim:
+            claimName: pv-showcase-s3-storage
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

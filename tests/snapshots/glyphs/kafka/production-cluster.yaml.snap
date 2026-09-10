@@ -1,0 +1,123 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: events
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: production
+    spell: kaster
+  annotations:
+    strimzi.io/in-place-resizing: "true"
+spec:
+  kafka:
+    version: "4.3.1"
+    metadataVersion: "4.3-IV0"
+    listeners:
+      - authentication:
+          type: scram-sha-512
+        name: tls
+        port: 9093
+        tls: true
+        type: internal
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      transaction.state.log.replication.factor: 3
+    authorization:
+      type: simple
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+  cruiseControl:
+    {}
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: events-brokers
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: production
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  replicas: 3
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+    - id: 0
+      kraftMetadata: shared
+      size: 100Gi
+      type: persistent-claim
+  resources:
+    limits:
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 4Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: events-controllers
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: production
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  replicas: 3
+  roles:
+    - controller
+  storage:
+    type: jbod
+    volumes:
+    - id: 0
+      kraftMetadata: shared
+      size: 10Gi
+      type: persistent-claim
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi

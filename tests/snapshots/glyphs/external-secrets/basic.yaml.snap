@@ -1,0 +1,150 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: vault-store
+spec:
+  provider:
+    vault:
+      version: v2
+      server: http://vault.vault.svc:8200
+      path: kv
+      auth:
+        kubernetes:
+          mountPath: k8s-path-auth
+          role: externalsecrets-basic-test
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: app-config
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: app-config
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+    template:
+      data:
+        config: |
+          datasources:
+          - name: "{{ .database | toString }}"
+            type: "{{ .db_type }}"
+  data:
+    - secretKey: database
+      remoteRef:
+        key: kv/data/default/default/glyphs-release/publics/app-config
+        property: database
+    - secretKey: db_type
+      remoteRef:
+        key: custom-db-type
+        property: db_type
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: app-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: app-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: kv/data/default/default/glyphs-release/publics/app-secrets
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: db-credentials
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: db-credentials
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: kv/data/database/prod
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: advanced-secrets
+
+spec:
+  secretStoreRef:
+    name: vault-store
+    kind: ClusterSecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 30m
+  target:
+    name: advanced-secrets
+    creationPolicy: Orphan
+    deletionPolicy: Merge
+  dataFrom:
+  - extract:
+      conversionStrategy: Default
+      decodingStrategy: Auto
+      key: database-credentials
+      property: data
+      version: v1
+    rewrite:
+    - regexp:
+        source: exp-(.*?)-ression
+        target: rewriting-${1}-with-groups
+  - find:
+      conversionStrategy: Unicode
+      decodingStrategy: Base64
+      name:
+        regexp: .*foobar.*
+      path: path-to-filter
+      tags:
+        foo: bar
+    rewrite:
+    - regexp:
+        source: foo
+        target: bar

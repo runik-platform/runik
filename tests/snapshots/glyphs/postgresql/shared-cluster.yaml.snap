@@ -1,0 +1,279 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: shared-pg
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  description: PostgreSQL cluster for shared-pg
+
+  instances: 3
+  managed:
+     roles:
+      - createrole: true
+        ensure: present
+        login: true
+        name: vault_mgr
+        passwordSecret:
+          name: shared-pg-vault-mgr
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: shared-pg-superuser
+
+  storage:
+    size: 50Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: shared-pg
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - '*'
+  connectionURL: postgresql://{{username}}:{{password}}@shared-pg-rw.glyphs-release.svc:5432/postgres
+  passwordAuthentication: "password"
+  username: vault_mgr
+  rootCredentials:
+    secret:
+      name: shared-pg-vault-mgr-root
+    passwordKey: password
+    usernameKey: username
+  path: database
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: shared-pg-superuser
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  authentication:
+    path: the-yaml-life
+    role: shared-pg
+    serviceAccount:
+      name: shared-pg
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: secret/data/test-book/databases/glyphs-release/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: shared-pg-vault-mgr
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  authentication:
+    path: the-yaml-life
+    role: shared-pg
+    serviceAccount:
+      name: shared-pg
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  isKVSecretsEngineV2: true
+  path: secret/data/test-book/databases/glyphs-release/publics/
+  secretKey: password
+  secretFormat:
+    passwordPolicyName: simple-password-policy
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: shared-pg-superuser
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secret/data/test-book/databases/glyphs-release/publics/shared-pg-superuser
+      authentication:
+        path: the-yaml-life
+        role: shared-pg
+        serviceAccount:
+          name: shared-pg
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: shared-pg-superuser
+    labels:
+      app.kubernetes.io/name: shared-pg
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: databases
+      spell: shared-pg
+    stringData:
+        username: postgres
+        password: '{{ .secret.password }}'
+    type: kubernetes.io/basic-auth
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: shared-pg-vault-mgr
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secret/data/test-book/databases/glyphs-release/publics/shared-pg-vault-mgr
+      authentication:
+        path: the-yaml-life
+        role: shared-pg
+        serviceAccount:
+          name: shared-pg
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: shared-pg-vault-mgr
+    labels:
+      app.kubernetes.io/name: shared-pg
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: databases
+      spell: shared-pg
+    stringData:
+        username: vault_mgr
+        password: '{{ .secret.password }}'
+    type: kubernetes.io/basic-auth
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: shared-pg-vault-mgr-root
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: shared-pg
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: shared-pg
+spec:
+  refreshThreshold: 90
+  refreshPeriod: 3m0s
+  vaultSecretDefinitions:
+    - name: secret
+      requestType: GET
+      path: secret/data/test-book/databases/glyphs-release/publics/shared-pg-vault-mgr
+      authentication:
+        path: the-yaml-life
+        role: vault
+        serviceAccount:
+          name: vault
+      connection:
+        address: http://vault.vault.svc:8200
+        tLSConfig:
+          skipVerify: false
+  output:
+    name: shared-pg-vault-mgr-root
+    labels:
+      app.kubernetes.io/name: shared-pg
+      app.kubernetes.io/instance: test
+      app.kubernetes.io/part-of: test-book
+      app.kubernetes.io/managed-by: Helm
+      spelbook: test-book
+      chapter: databases
+      spell: shared-pg
+    stringData:
+        password: '{{ .secret.password }}'
+        username: vault_mgr
+    type: kubernetes.io/basic-auth

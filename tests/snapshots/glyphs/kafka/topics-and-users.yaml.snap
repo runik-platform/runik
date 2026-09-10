@@ -1,0 +1,74 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: audit-events
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    min.insync.replicas: 2
+    retention.ms: 604800000
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: audit-writer
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: applications
+    spell: kaster
+    strimzi.io/cluster: events
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    acls:
+    - operations:
+      - Create
+      - Describe
+      - Write
+      resource:
+        name: audit-events
+        patternType: literal
+        type: topic
+    - operations:
+      - Read
+      resource:
+        name: audit-writer
+        patternType: prefix
+        type: group
+    type: simple

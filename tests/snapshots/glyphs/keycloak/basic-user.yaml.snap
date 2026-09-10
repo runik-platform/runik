@@ -1,0 +1,44 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmUser
+metadata:
+  name: test-user-john
+  labels:
+    app.kubernetes.io/name: keycloak-basic-user
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmRef:
+    name: test-realm
+    kind: ClusterKeycloakRealm
+  username: john.doe
+  email: john.doe@test.local
+  firstName: John
+  lastName: Doe
+  enabled: true
+  emailVerified: true
+  keepResource: true
+  groups:
+    - engineering
+    - developers
+  roles:
+    - user
+    - developer

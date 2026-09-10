@@ -1,0 +1,17 @@
+name: covenant-example
+namespace: covenant-example
+repository: https://github.com/runik-platform/runik.git
+path: covenant
+revision: upstream
+
+appParams:
+  bookData: true
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+
+values:
+  applicationSet:
+    source:
+      repository: https://github.com/runik-platform/runik.git
+      path: covenant
+      revision: upstream

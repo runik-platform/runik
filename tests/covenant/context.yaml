@@ -1,0 +1,38 @@
+applicationSet:
+  source:
+    repository: https://github.com/runik-platform/covenant.git
+    path: .
+    revision: upstream
+
+spellbook:
+  name: covenant-example
+  projectName: covenant-example
+
+chapter:
+  name: identity
+
+lexicon:
+  example-keycloak:
+    type: keycloak
+    name: example-keycloak
+    keycloakCrdName: keycloak
+    namespace: keycloak
+    labels:
+      default: book
+  example-vault:
+    type: secret-store
+    provider: operator
+    name: example-vault
+    url: http://vault.vault.svc:8200
+    namespace: vault
+    serviceAccount: vault
+    authPath: example
+    secretPath: secret
+    skipVerify: true
+    labels:
+      default: book
+  example-issuer:
+    type: cert-issuer
+    name: example-issuer
+    labels:
+      default: book

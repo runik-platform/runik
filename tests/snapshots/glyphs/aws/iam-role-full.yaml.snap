@@ -1,0 +1,77 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: iam.services.k8s.aws/v1alpha1
+kind: Role
+metadata:
+  name: ack-dev-eks-cert-manager
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  name: ack-dev-eks-cert-manager
+  path: /ack/
+  description: "IAM Role for cert-manager and external-dns to manage Route53 DNS records"
+  permissionsBoundary: arn:aws:iam::123456789012:policy/ack/eks-ack-permissions-boundary
+  assumeRolePolicyDocument: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Federated": "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+            "StringEquals": {
+              "oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC:sub": [
+                "system:serviceaccount:cert-manager:dev-cert-manager",
+                "system:serviceaccount:kube-system:external-dns"
+              ],
+              "oidc.eks.us-west-1.amazonaws.com/id/SARLANGAOIDC:aud": "sts.amazonaws.com"
+            }
+          }
+        }
+      ]
+    }
+  policies: # usear runic indexer para traer las policies por selector
+    - arn:aws:iam::123456789012:policy/ack-eks-cert-manager-route53
+  tags:
+    - key: Name
+      value: ack-dev-eks-cert-manager
+    - key: ManagedBy
+      value: ack-iam-controller
+    - key: Environment
+      value: development
+    - key: Name
+      value: dev-eks-cert-manager-route53
+    - key: ManagedBy
+      value: ack-iam-controller
+    - key: Cluster
+      value: dev-eks
+    - key: Component
+      value: cert-manager
+    - key: Environment
+      value: dev
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

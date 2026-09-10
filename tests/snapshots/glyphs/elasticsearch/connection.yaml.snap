@@ -1,0 +1,164 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-infra
+  labels:
+    app.kubernetes.io/name: shared-elastic
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: shared-infra
+    spell: shared-elastic
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineConfig
+metadata:
+  name: shared-elastic
+  namespace: elastic-infra
+  labels:
+    app.kubernetes.io/name: shared-elastic
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: shared-infra
+    spell: shared-elastic
+spec:
+  authentication:
+    path: the-yaml-life
+    role: elastic-infra
+    serviceAccount:
+      name: elastic-infra
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  pluginName: elasticsearch-database-plugin
+  allowedRoles:
+    - shared-elastic-*-rw
+    - shared-elastic-*-ro
+  passwordAuthentication: "password"
+  databaseSpecificConfig:
+    url: http://shared-elastic-es-http.elastic-infra.svc:9200
+  verifyConnection: true
+  username: elastic
+  rootCredentials:
+    secret:
+      name: shared-elastic-es-elastic-user
+    passwordKey: elastic
+    usernameKey: username
+  path: database
+  rootPasswordRotation:
+    rotationPeriod: "0s"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: elastic-infra
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: shared-elastic
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: shared-infra
+    spell: shared-elastic
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: test-book
+  policies:
+    - elastic-infra
+  targetServiceAccounts:
+    - elastic-infra
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: elastic-infra
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: shared-elastic
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: shared-infra
+    spell: shared-elastic
+spec:
+  authentication:
+    path: the-yaml-life
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/test-book/shared-infra/elastic-infra/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/test-book/shared-infra/elastic-infra/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/test-book/shared-infra/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/shared-infra/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/test-book/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+    path "db/+/+/+/config/*" {
+      capabilities = ["create","read","update","delete"]
+    }
+    path "database/config/shared-elastic" {
+      capabilities = ["create","read","update","delete"]
+    }

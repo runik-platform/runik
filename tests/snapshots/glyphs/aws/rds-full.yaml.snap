@@ -1,0 +1,169 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBInstance
+metadata:
+  name: prod-postgres-instance
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+spec:
+  dbInstanceIdentifier: prod-postgres-instance
+  dbInstanceClass: db.r6g.large
+  engine: postgres
+  engineVersion: "15.4"
+
+  # Storage configuration
+  allocatedStorage: 100
+  maxAllocatedStorage: 500
+  storageType: gp3
+  iops: 3000
+  storageThroughput: 125
+  storageEncrypted: true
+  kmsKeyID: arn:aws:kms:us-west-1:123456789:key/abc-123
+
+  # Master credentials
+  masterUsername: postgres
+  masterUserPassword:
+    namespace: database
+    name: rds-postgres-master
+    key: password
+
+  # Database name
+  dbName: myapp_prod
+
+  # Networking - Subnet Group
+  dbSubnetGroupName: prod-rds-subnets
+
+  # Parameter Group
+  dbParameterGroupName: prod-postgres-params
+
+  # Security Groups
+  vpcSecurityGroupIDs:
+    - sg-prod-rds-123
+
+  publiclyAccessible: false
+  port: 5432
+
+  # High availability
+  multiAZ: true
+  availabilityZone: us-west-1a
+
+  # Backup configuration
+  backupRetentionPeriod: 30
+  preferredBackupWindow: "03:00-04:00"
+  preferredMaintenanceWindow: "sun:04:00-sun:05:00"
+  copyTagsToSnapshot: true
+
+  # Updates and maintenance
+  autoMinorVersionUpgrade: false
+  deletionProtection: true
+
+  # Performance Insights
+  enablePerformanceInsights: true
+  performanceInsightsRetentionPeriod: 7
+
+  # Monitoring
+  monitoringInterval: 60
+  monitoringRoleARN: arn:aws:iam::123456789:role/rds-monitoring-role
+  enableCloudwatchLogsExports:
+    - postgresql
+    - upgrade
+
+  # Tags
+  tags:
+    - key: Name
+      value: prod-postgres-instance
+    - key: Environment
+      value: prod
+    - key: ManagedBy
+      value: runik-platform
+    - key: CostCenter
+      value: database-team
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBParameterGroup
+metadata:
+  name: prod-postgres-params
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+  annotations:
+    services.k8s.aws/adoption-policy: adopt
+spec:
+  name: prod-postgres-params
+  description: "Production PostgreSQL 15 parameters"
+  family: postgres15
+  parameterOverrides:
+    checkpoint_completion_target: "0.9"
+    effective_cache_size: "3GB"
+    effective_io_concurrency: "200"
+    maintenance_work_mem: "256MB"
+    max_connections: "500"
+    random_page_cost: "1.1"
+    shared_buffers: "1GB"
+    wal_buffers: "64MB"
+    work_mem: "16MB"
+  tags:
+    - key: Environment
+      value: prod
+    - key: ManagedBy
+      value: runik-platform
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBSubnetGroup
+metadata:
+  name: prod-rds-subnets
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: kaster
+  annotations:
+    services.k8s.aws/adoption-policy: adopt
+spec:
+  name: prod-rds-subnets
+  description: "Production RDS subnet group"
+  
+  subnetIDs:
+    - subnet-prod-a
+    - subnet-prod-b
+  tags:
+    - key: Environment
+      value: prod
+    - key: ManagedBy
+      value: runik-platform

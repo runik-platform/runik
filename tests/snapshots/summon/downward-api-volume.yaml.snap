@@ -1,0 +1,125 @@
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metadata-aware-app
+  labels:
+    app.kubernetes.io/name: metadata-aware-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: metadata-aware-app
+---
+# Source: summon/templates/summon.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-aware-app
+  labels:
+    app.kubernetes.io/name: metadata-aware-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: metadata-aware-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: metadata-aware-app
+    app.kubernetes.io/instance: test
+---
+# Source: summon/templates/summon.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadata-aware-app
+  labels:
+    app.kubernetes.io/name: metadata-aware-app
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+    spelbook: default
+    chapter: default
+    spell: metadata-aware-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-aware-app
+      app.kubernetes.io/instance: test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: metadata-aware-app
+        app.kubernetes.io/instance: test
+      
+    spec:
+      serviceAccountName: metadata-aware-app
+      containers:
+        
+        - name: metadata-aware-app-metadata-aware-app
+          image: docker.io/busybox:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cat /etc/podinfo/namespace && sleep 3600
+          
+          
+          volumeMounts:
+          
+            - name: podinfo
+              mountPath: /etc/podinfo
+          
+          
+          env:
+          
+            - name: SPELLBOOK_NAME
+              value: "default"
+            - name: CHAPTER_NAME
+              value: "default"
+            - name: SPELL_NAME
+              value: "metadata-aware-app"
+          
+      
+      volumes:
+      
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
+              - path: name
+                fieldRef:
+                  fieldPath: metadata.name
+              - path: labels
+                fieldRef:
+                  fieldPath: metadata.labels
+              - path: annotations
+                fieldRef:
+                  fieldPath: metadata.annotations
+---
+# Source: summon/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: summon/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

@@ -1,0 +1,24 @@
+name: automation
+
+tarot:
+  cards:
+    initialize-repository:
+      contract:
+        inputs:
+          parameters:
+            repository:
+              required: true
+      container:
+        image: alpine:3.22
+        command: [sh, -c]
+        args: ["echo initialize {{inputs.parameters.repository}}"]
+    set-default-branch:
+      container:
+        image: alpine:3.22
+        command: [sh, -c]
+        args: ["echo set default branch"]
+    apply-protection:
+      container:
+        image: alpine:3.22
+        command: [sh, -c]
+        args: ["echo apply branch protection"]
