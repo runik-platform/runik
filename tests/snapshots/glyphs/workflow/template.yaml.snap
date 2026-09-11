@@ -32,6 +32,9 @@ metadata:
     process: cache-reconciliation
 spec:
   entrypoint: reconcile
+  synchronization:
+    mutexes:
+    - name: cache-reconciliation
   templates:
   - container:
       args:
