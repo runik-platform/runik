@@ -1,0 +1,50 @@
+name: postgresql-contract
+spellbook:
+  name: test-book
+chapter:
+  name: databases
+glyphs:
+  postgresql:
+    small:
+      type: instance
+      storage: {size: 1Gi}
+    large:
+      type: instance
+      instances: 3
+      storage: {size: 500Gi}
+    unmonitored:
+      type: instance
+      inheritedMetadata:
+        labels: {team: platform}
+        annotations: {example.com/owner: db-team}
+      observability:
+        enabled: false
+    metrics-only:
+      type: instance
+      observability:
+        dashboard: false
+        alerts: false
+    custom:
+      type: instance
+      inheritedMetadata:
+        labels: {team: platform}
+        annotations: {example.com/owner: db-team}
+      monitoring:
+        metricsQueriesTTL: 15
+      observability:
+        datasourceUid: prometheus
+        folder: Databases
+        thresholds:
+          diskWarningRatio: 0.7
+    backed-up:
+      type: instance
+      instances: 2
+      backup:
+        enabled: true
+        barmanObjectName: external-store
+    generic:
+      type: instance
+      instances: 3
+      backup:
+        enabled: true
+        barmanObjectName: external-store

@@ -187,7 +187,7 @@ spec:
       name: shared-pg-vault-mgr-root
     passwordKey: password
     usernameKey: username
-  path: analytics-db/test-book/apps/multi-engine
+  path: analytics-db/tenant/analytics/apps/multi-engine
   rootPasswordRotation:
     rotationPeriod: "0s"
 ---
@@ -250,7 +250,7 @@ spec:
     address: http://vault.vault.svc:8200
     tLSConfig:
       skipVerify: false
-  path: analytics-db/test-book/apps/multi-engine
+  path: analytics-db/tenant/analytics/apps/multi-engine
   dBName: multi-engine-shared-pg-analytics-db
   creationStatements:
     - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'
@@ -393,6 +393,9 @@ spec:
     path "sys/mounts/db/test-book/apps/multi-engine" {
       capabilities = ["create","read","update","delete"]
     }
+    path "sys/mounts/db/test-book/apps/multi-engine/tune" {
+      capabilities = ["read","update"]
+    }
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: redhatcop.redhat.io/v1alpha1
@@ -421,44 +424,47 @@ spec:
     tLSConfig:
       skipVerify: false
   policy: |
-    path "secret/data/test-book/apps/reports-db/*" {
+    path "secret/data/tenant/analytics/apps/reports-db/*" {
       capabilities = ["create","read","update","delete","list"]
     }
-    path "secret/metadata/test-book/apps/reports-db/*" {
+    path "secret/metadata/tenant/analytics/apps/reports-db/*" {
       capabilities = ["create","read","update","delete","list"]
     }
-    path "secret/data/test-book/apps/publics/*" {
+    path "secret/data/tenant/analytics/apps/publics/*" {
       capabilities = ["read","list"]
     }
-    path "secret/metadata/test-book/apps/publics/*" {
+    path "secret/metadata/tenant/analytics/apps/publics/*" {
       capabilities = ["read","list"]
     }
-    path "secret/data/test-book/publics/*" {
+    path "secret/data/tenant/analytics/publics/*" {
       capabilities = ["read","list"]
     }
-    path "secret/metadata/test-book/publics/*" {
+    path "secret/metadata/tenant/analytics/publics/*" {
       capabilities = ["read","list"]
     }
-    path "secret/data/test-book/pipelines/*" {
+    path "secret/data/tenant/analytics/pipelines/*" {
       capabilities = ["read","list"]
     }
-    path "secret/metadata/test-book/pipelines/*" {
+    path "secret/metadata/tenant/analytics/pipelines/*" {
       capabilities = ["read","list"]
     }
     path "sys/policies/password/*" {
       capabilities = ["read","list"]
     }
-    path "analytics-db/test-book/apps/multi-engine/creds/*" {
+    path "analytics-db/tenant/analytics/apps/multi-engine/creds/*" {
       capabilities = ["read"]
     }
-    path "analytics-db/test-book/apps/multi-engine/static-creds/*" {
+    path "analytics-db/tenant/analytics/apps/multi-engine/static-creds/*" {
       capabilities = ["read"]
     }
     path "sys/mounts" {
       capabilities = ["read"]
     }
-    path "sys/mounts/analytics-db/test-book/apps/multi-engine" {
+    path "sys/mounts/analytics-db/tenant/analytics/apps/multi-engine" {
       capabilities = ["create","read","update","delete"]
+    }
+    path "sys/mounts/analytics-db/tenant/analytics/apps/multi-engine/tune" {
+      capabilities = ["read","update"]
     }
 ---
 # Source: kaster/templates/kaster.yaml
@@ -520,7 +526,7 @@ spec:
     tLSConfig:
       skipVerify: false
   type: database
-  path: analytics-db/test-book/apps
+  path: analytics-db/tenant/analytics/apps
   description: "Runik database credentials for test-book/apps/multi-engine"
   config:
     listingVisibility: hidden
@@ -603,7 +609,7 @@ spec:
   vaultSecretDefinitions:
     - name: secret
       requestType: GET
-      path: analytics-db/test-book/apps/multi-engine/creds/reports
+      path: analytics-db/tenant/analytics/apps/multi-engine/creds/reports
       authentication:
         path: the-yaml-life
         role: reports-db

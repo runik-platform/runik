@@ -1,0 +1,107 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1alpha1
+kind: ClusterKeycloakRealm
+metadata:
+  name: cluster-realm-profile
+  labels:
+    app.kubernetes.io/name: keycloak-user-profile-config
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmName: cluster-profile
+  clusterKeycloakRef: keycloak
+  userProfileConfig:
+    attributes:
+    - displayName: ${lastName}
+      name: lastName
+      permissions:
+        edit:
+        - admin
+        - user
+        view:
+        - admin
+        - user
+      validations:
+        length:
+          max:
+            intVal: 255
+  realmEventConfig:
+    adminEventsDetailsEnabled: true
+    adminEventsEnabled: true
+    eventsEnabled: true
+    eventsExpiration: 15000
+    eventsListeners:
+      - jboss-logging
+  tokenSettings:
+    accessCodeLifespan: 300
+    accessToken: 300
+    accessTokenLifespan: 300
+    actionTokenGeneratedByAdminLifespan: 300
+    actionTokenGeneratedByUserLifespan: 300
+    defaultSignatureAlgorithm: RS256
+    refreshTokenMaxReuse: 0
+    revokeRefreshToken: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealm
+metadata:
+  name: realm-profile
+  labels:
+    app.kubernetes.io/name: keycloak-user-profile-config
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: default
+    app.kubernetes.io/managed-by: Helm
+spec:
+  realmName: namespaced-profile
+  keycloakRef:
+    name: keycloak
+    kind: Keycloak
+  userProfileConfig:
+    attributes:
+    - displayName: Department
+      name: department
+      permissions:
+        edit:
+        - admin
+        view:
+        - admin
+        - user
+      required:
+        roles:
+        - admin
+    unmanagedAttributePolicy: ADMIN_EDIT
+  realmEventConfig:
+    adminEventsDetailsEnabled: true
+    adminEventsEnabled: true
+    eventsEnabled: true
+    eventsExpiration: 15000
+    eventsListeners:
+      - jboss-logging
+  tokenSettings:
+    accessCodeLifespan: 300
+    accessToken: 300
+    accessTokenLifespan: 300
+    actionTokenGeneratedByAdminLifespan: 300
+    actionTokenGeneratedByUserLifespan: 300
+    defaultSignatureAlgorithm: RS256
+    refreshTokenMaxReuse: 0
+    revokeRefreshToken: true

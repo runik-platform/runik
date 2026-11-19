@@ -246,6 +246,52 @@ appendix:
 
 Used by the vault glyph to connect to the correct Vault server. Vault secrets, policies, and database engines all resolve their Vault server through the lexicon.
 
+### Secret path roots
+
+All secret providers share the logical hierarchy in `common`. Set `pathRoot`
+on the selected `type: secret-store` entry to replace the book component of
+generated secret paths:
+
+```yaml
+appendix:
+  lexicon:
+    production-secrets:
+      type: secret-store
+      provider: operator  # Vault operator; also supported by ESO providers
+      url: http://vault.vault.svc:8200
+      namespace: vault
+      authPath: kubernetes
+      secretPath: secret
+      pathRoot: acme/prod
+      labels:
+        default: book
+```
+
+With chapter `apps`, `path: chapter`, and secret name `api-token`, the logical
+path becomes `acme/prod/apps/publics/api-token`. Without `pathRoot`, the book
+name is used exactly as before. `path: book` and the default namespace scope
+use the same root. Vault adds its existing mount/operation prefix; other
+providers retain their existing key representation. This setting does not
+change provider encoding rules or rename the book, resources, or auth mounts.
+
+Vault KV readers, random writers, generated policies, S3 credential paths,
+and database mounts consume the same selected root. A database mount becomes
+`<databasePath>/<pathRoot>/<chapter>/<spell>`. Explicit database mounts,
+absolute KV paths, `remoteRef.key`, `dataFrom`, and explicit PushSecret data
+remain authoritative. Changing a root changes references; it does not move
+existing secrets or database-engine mounts.
+
+`pathRoot` must be a non-empty string of slash-separated segments; each segment
+starts with an ASCII letter or digit and contains only letters, digits, `.`,
+`_`, or `-`. Leading/trailing slashes, empty segments and wildcards fail the
+render. Use the normal lexicon selection and `localAppendix` rules to override
+the selected store configuration for a chapter or spell.
+
+For compatibility, PushSecret's `path` remains a literal key when `pathRoot`
+is absent. With `pathRoot` configured, `path: book` and `path: chapter` select
+the same generated scopes as ExternalSecret; other explicit PushSecret paths
+retain their literal meaning.
+
 ### database
 
 ```yaml

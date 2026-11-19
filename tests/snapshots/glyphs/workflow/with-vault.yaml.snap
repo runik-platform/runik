@@ -1,0 +1,127 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: test
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: workflows
+    spell: kaster
+spec:
+  authentication:
+    path: kubernetes
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  path: example
+  policies:
+    - test
+  targetServiceAccounts:
+    - test
+  targetNamespaces:
+    targetNamespaces:
+      - glyphs-release
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: test
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: workflows
+    spell: kaster
+spec:
+  authentication:
+    path: kubernetes
+    role: vault
+    serviceAccount:
+      name: vault
+  connection:
+    address: http://vault.vault.svc:8200
+    tLSConfig:
+      skipVerify: false
+  policy: |
+    path "secret/data/example/workflows/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/metadata/example/workflows/glyphs-release/*" {
+      capabilities = ["create","read","update","delete","list"]
+    }
+    path "secret/data/example/workflows/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/example/workflows/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/example/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/example/publics/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/data/example/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "secret/metadata/example/pipelines/*" {
+      capabilities = ["read","list"]
+    }
+    path "sys/policies/password/*" {
+      capabilities = ["read","list"]
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: repository-workflows
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example
+    chapter: workflows
+    spell: kaster
+spec:
+  entrypoint: discover
+  templates:
+  - container:
+      args:
+      - discover
+      command:
+      - echo
+      image: alpine:3.22
+    name: discover

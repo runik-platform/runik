@@ -140,7 +140,7 @@ spec:
         s3:
           bucket: platform-databases-mongo-main-backup
           credentialsSecret: mongo-main-backup
-          endpointUrl: http://seaweedfs-s3.seaweedfs.svc:8333
+          endpointUrl: http://s3.s3.svc:7070
           insecureSkipTLSVerify: false
           prefix: mongo-main
           region: us-east-1
@@ -266,7 +266,7 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: RandomSecret
 metadata:
-  name: s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+  name: s3-identities-gateway-mongo-main-backup-aws-access-key-id
   namespace: databases
   labels:
     app.kubernetes.io/name: test
@@ -278,7 +278,7 @@ metadata:
     spell: kaster
     runik.ing/identity-name: platform-databases-mongo-main-backup
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   authentication:
     path: platform
@@ -299,7 +299,7 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: RandomSecret
 metadata:
-  name: s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+  name: s3-identities-gateway-mongo-main-backup-aws-secret-access-key
   namespace: databases
   labels:
     app.kubernetes.io/name: test
@@ -311,7 +311,7 @@ metadata:
     spell: kaster
     runik.ing/identity-name: platform-databases-mongo-main-backup
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   authentication:
     path: platform
@@ -363,7 +363,7 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: VaultSecret
 metadata:
-  name: s3-identities-seaweedfs-mongo-main-backup
+  name: s3-identities-gateway-mongo-main-backup
   namespace: databases
   labels:
     app.kubernetes.io/name: test
@@ -375,14 +375,14 @@ metadata:
     spell: kaster
     runik.ing/identity-name: platform-databases-mongo-main-backup
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   refreshThreshold: 90
   refreshPeriod: 3m0s
   vaultSecretDefinitions:
     - name: aws-access-key-id
       requestType: GET
-      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+      path: kv/data/platform/databases/databases/publics/s3-identities-gateway-mongo-main-backup-aws-access-key-id
       authentication:
         path: platform
         role: mongo-main-mongodb-system
@@ -394,7 +394,7 @@ spec:
           skipVerify: false
     - name: aws-secret-access-key
       requestType: GET
-      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+      path: kv/data/platform/databases/databases/publics/s3-identities-gateway-mongo-main-backup-aws-secret-access-key
       authentication:
         path: platform
         role: mongo-main-mongodb-system
@@ -416,7 +416,7 @@ spec:
       spell: kaster
       runik.ing/identity-name: platform-databases-mongo-main-backup
       runik.ing/s3-identity: "true"
-      runik.ing/s3-provider: seaweedfs
+      runik.ing/s3-provider: gateway
     stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
         AWS_ENDPOINT: https://s3.example.test
         AWS_ENDPOINTS: https://s3.example.test
@@ -430,8 +430,8 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: VaultSecret
 metadata:
-  name: s3-identities-seaweedfs-mongo-main-backup
-  namespace: seaweedfs
+  name: s3-identities-gateway-mongo-main-backup
+  namespace: s3
   labels:
     app.kubernetes.io/name: test
     app.kubernetes.io/instance: test
@@ -442,7 +442,7 @@ metadata:
     spell: kaster
     runik.ing/identity-name: platform-databases-mongo-main-backup
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
     runik.ing/source-namespace: databases
 spec:
   refreshThreshold: 90
@@ -450,24 +450,24 @@ spec:
   vaultSecretDefinitions:
     - name: aws-access-key-id
       requestType: GET
-      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-access-key-id
+      path: kv/data/platform/databases/databases/publics/s3-identities-gateway-mongo-main-backup-aws-access-key-id
       authentication:
         path: platform
-        role: seaweedfs
+        role: gateway-s3-aggregator-pod
         serviceAccount:
-          name: seaweedfs
+          name: gateway-s3-aggregator-pod
       connection:
         address: https://vault.vault.svc:8200
         tLSConfig:
           skipVerify: false
     - name: aws-secret-access-key
       requestType: GET
-      path: kv/data/platform/databases/databases/publics/s3-identities-seaweedfs-mongo-main-backup-aws-secret-access-key
+      path: kv/data/platform/databases/databases/publics/s3-identities-gateway-mongo-main-backup-aws-secret-access-key
       authentication:
         path: platform
-        role: seaweedfs
+        role: gateway-s3-aggregator-pod
         serviceAccount:
-          name: seaweedfs
+          name: gateway-s3-aggregator-pod
       connection:
         address: https://vault.vault.svc:8200
         tLSConfig:
@@ -484,7 +484,7 @@ spec:
       spell: kaster
       runik.ing/identity-name: platform-databases-mongo-main-backup
       runik.ing/s3-identity: "true"
-      runik.ing/s3-provider: seaweedfs
+      runik.ing/s3-provider: gateway
       runik.ing/source-namespace: databases
     stringData:
         BUCKETS: platform-databases-mongo-main-backup

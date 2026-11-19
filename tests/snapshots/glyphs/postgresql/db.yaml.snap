@@ -237,6 +237,9 @@ spec:
     path "sys/mounts/db/test-book/admintools/miapp" {
       capabilities = ["create","read","update","delete"]
     }
+    path "sys/mounts/db/test-book/admintools/miapp/tune" {
+      capabilities = ["read","update"]
+    }
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: redhatcop.redhat.io/v1alpha1

@@ -1,0 +1,77 @@
+# The Make target replaces alert names with the actual generated PromQL and threshold.
+rule_files: [rules.yaml]
+evaluation_interval: 1m
+tests:
+  - name: healthy slots and filesystem; idle archiver has no backlog
+    interval: 1m
+    input_series:
+      - &up
+        series: 'cnpg_collector_up{namespace="tenant-blue",pod="generic-1",cnpg_cluster="generic",role="primary"}'
+        values: 1+0x30
+      - &limit
+        series: 'cnpg_pg_settings_setting{namespace="tenant-blue",pod="generic-1",cnpg_cluster="generic",role="primary",name="max_slot_wal_keep_size"}'
+        values: 4096+0x30
+      - &archived
+        series: 'cnpg_pg_stat_archiver_last_archived_time{namespace="tenant-blue",pod="generic-1",cnpg_cluster="generic",role="primary"}'
+        values: 500+0x30
+      - &idle
+        series: 'cnpg_collector_pg_wal_archive_status{namespace="tenant-blue",pod="generic-1",cnpg_cluster="generic",role="primary",value="ready"}'
+        values: 0+0x30
+      - &slot
+        series: 'cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="tenant-blue",pod="generic-1",cnpg_cluster="generic",role="primary",slot_name="_cnpg_generic_2",slot_type="physical"}'
+        values: 0+0x30
+      - &capacity
+        series: 'kubelet_volume_stats_capacity_bytes{namespace="tenant-blue",persistentvolumeclaim="generic-1"}'
+        values: 16000000000+0x30
+      - &available
+        series: 'kubelet_volume_stats_available_bytes{namespace="tenant-blue",persistentvolumeclaim="generic-1"}'
+        values: 14000000000+0x30
+    promql_expr_test:
+      - {alert: PostgreSQLSlotRetainedWALHigh, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}
+      - {alert: PostgreSQLSlotRetainedWALCritical, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}
+      - {alert: PostgreSQLSlotWALBudgetLow, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}
+      - {alert: PostgreSQLDiskCritical, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}
+      - {alert: PostgreSQLVolumeMetricsMissing, mode: raw, eval_time: 20m, exp_samples: []}
+      - {alert: PostgreSQLWALArchivingStalled, mode: raw, eval_time: 20m, exp_samples: []}
+  - name: retained WAL threatens both slot budget and disk space
+    interval: 1m
+    input_series:
+      - *up
+      - *limit
+      - *archived
+      - *idle
+      - {<<: *slot, values: 4000000000+0x30}
+      - *capacity
+      - {<<: *available, values: 1000000000+0x30}
+    promql_expr_test:
+      - {alert: PostgreSQLSlotRetainedWALHigh, eval_time: 20m, exp_samples: [{labels: '{}', value: 1}]}
+      - {alert: PostgreSQLSlotRetainedWALCritical, eval_time: 20m, exp_samples: [{labels: '{}', value: 1}]}
+      - {alert: PostgreSQLSlotWALBudgetLow, eval_time: 20m, exp_samples: [{labels: '{}', value: 1}]}
+      - {alert: PostgreSQLDiskCritical, eval_time: 20m, exp_samples: [{labels: '{}', value: 1}]}
+      - {alert: PostgreSQLVolumeMetricsMissing, mode: raw, eval_time: 20m, exp_samples: []}
+  - name: absent volume metrics must be reported
+    interval: 1m
+    input_series: [*up, *limit, *archived, *idle]
+    promql_expr_test:
+      - {alert: PostgreSQLVolumeMetricsMissing, eval_time: 20m, exp_samples: [{labels: '{}', value: 1}]}
+  - name: archiver has pending WAL and no recent successful archive
+    interval: 1m
+    input_series:
+      - *up
+      - *archived
+      - {<<: *idle, values: 1+0x30}
+    promql_expr_test:
+      - {alert: PostgreSQLWALArchivingStalled, eval_time: 30m, exp_samples: [{labels: '{}', value: 1}]}
+  - name: standby mirrored slot must not be counted as primary pressure
+    interval: 1m
+    input_series:
+      - *up
+      - *slot
+      - *capacity
+      - series: 'cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="tenant-blue",pod="generic-2",cnpg_cluster="generic",role="replica",slot_name="_cnpg_generic_3",slot_type="physical"}'
+        values: 12000000000+0x30
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="tenant-blue",persistentvolumeclaim="generic-2"}'
+        values: 16000000000+0x30
+    promql_expr_test:
+      - {alert: PostgreSQLSlotRetainedWALHigh, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}
+      - {alert: PostgreSQLSlotRetainedWALCritical, eval_time: 20m, exp_samples: [{labels: '{}', value: 0}]}

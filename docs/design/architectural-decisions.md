@@ -71,11 +71,11 @@ The kaster dispatch template references these subcharts directly:
 - **Simpler**: You never run `helm dependency update`. There is no dependency resolution, no per-glyph version pinning, and no `Chart.lock` file to maintain.
 - **Faster**: No chart downloads or archive extraction. The charts are already on disk as plain directories, ready for `helm template`.
 - **Testable**: You test glyphs by rendering the kaster chart directly. Run `helm template charts/kaster/ -f test-values.yaml` and inspect the output. No dependency build step before testing.
-- **Single source of truth**: Every consumer points at the same `glyphs.git` commit, so a glyph behaves identically everywhere once the submodule reference is bumped.
+- **Single source of truth**: Each consumer pins the same reviewed `glyphs.git` commit. The gitlink identifies the exact templates Helm loads.
 
 **Tradeoffs:**
 
-- **Submodule bumps**: After changing a glyph, you commit and push in the canonical `charts/glyphs/` submodule, then bump the submodule reference in every consumer that needs the change. This is a cross-repo step, not a single commit.
+- **Cross-repository propagation**: A push to `glyphs/upstream` triggers the Glyphs repository's `.argo/synchronize.yaml` workflow. It validates the new commit across the five consumers and then updates Runik. [Synchronization and recovery](creating-glyphs.md#step-7-distribute-the-glyph)
 - **Mirror directories exist**: Every glyph is visible under five consumer paths (`charts/kaster/charts/`, `charts/summon/charts/`, `charts/trinkets/microspell/charts/`, `charts/trinkets/tarot/charts/`, `covenant/charts/`) — all pointing at the same `glyphs.git`. Only the canonical path (`charts/glyphs/`) should be edited.
 
 ---

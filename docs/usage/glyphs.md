@@ -33,7 +33,13 @@ glyphs:
       # ... type-specific fields
 ```
 
-The `<instance-name>` becomes the `.name` field in the template context, used for naming the generated Kubernetes resources.
+The `<instance-name>` becomes the `.name` field in the template context when
+the entry has no nonempty explicit `name`. Each glyph defines how that name
+maps to its generated resources. Glyphs using `common.glyph.name` can compose
+`namePrefix` and `nameSuffix` with resource-specific affixes; these fields do
+not automatically apply to every existing glyph. Glyph developers should
+follow the [shared naming contract](../design/creating-glyphs.md#resource-names-with-common)
+and reuse the resolved names in resource references.
 
 ## The Problem Glyphs Solve
 
@@ -187,7 +193,7 @@ One file. Environment-specific details (Vault address, gateway URL, issuer name)
 
 ## Two Dispatchers, Two YAML Locations
 
-Runik has two independent glyph dispatchers. The dispatcher a spell uses is determined mechanically by whether the spell has `chart:` / `path:`, and the infrastructure goes in a different location of the YAML accordingly. See also [root CLAUDE.md §4](../../CLAUDE.md) for the framework-level view.
+Runik has two independent glyph dispatchers. The dispatcher a spell uses is determined mechanically by whether the spell has `chart:` / `path:`, and the infrastructure goes in a different location of the YAML accordingly. See also [root AGENTS.md §4](../../AGENTS.md) for the framework-level view.
 
 ### Spells that use summon — top-level keys
 
@@ -946,12 +952,136 @@ backups belong to the cluster schedule.
 The low-level `instance` type emits a raw `PerconaServerMongoDB` and makes the
 caller responsible for the complete `spec`, including atomic role/user lists.
 
-See [MongoDB glyph design](../design/mongodb-glyph.md) for the ownership model,
-defaults, and lifecycle details.
+The chart documents engine registration, credential rotation and backup settings
+alongside its runnable examples. [MongoDB chart guide](../../charts/glyphs/mongodb/README.md) · [Examples](../../charts/glyphs/mongodb/examples/)
 
 ## PostgreSQL Glyph
 
-The postgresql glyph provisions CloudNativePG clusters.
+The PostgreSQL glyph provisions CloudNativePG clusters and databases on existing clusters.
+
+### type: db
+
+`postgresql.db` selects a shared cluster from a `type: postgres` lexicon entry.
+Vault credentials are dynamic by default. Static credentials managed by Vault
+require the entry to publish `managerSuperuser: true` and the consumer to set
+`credentials.rotationPeriod`.
+With a per-spell Vault mount, the application's ServiceAccount must match a local
+`vault.prolicy`. The examples include both the producer's lexicon entry and the
+consumer's declaration. [Dynamic credentials](../../charts/glyphs/postgresql/examples/db.yaml) · [Static credentials](../../charts/glyphs/postgresql/examples/db-static.yaml)
+
+### Credentials without Vault
+
+Both `cluster` and `db` derive their credential integration from the selected
+`type: secret-store` lexicon entry. `provider: operator` uses the native Vault
+integration; other providers, including `aws`, `gcp` and `vault`, use ESO.
+The provider can be a field or a label on that entry. Spells do not declare a
+separate credential provider.
+
+The backend and its authentication are configured independently in an existing
+`SecretStore` or `ClusterSecretStore`, registered as `type: secret-store` in
+the lexicon. PushSecret and backend-reading ExternalSecrets discover it through
+`runic-system.runic-indexer`, with the existing selector and default rules. No
+AWS resources or ServiceAccounts are provisioned by this mode. Install ESO (including its Password generator and
+PushSecret CRDs) and CNPG before syncing these resources. Standalone `DatabaseRole`
+resources used by `db` require CNPG 1.30 or newer.
+
+```yaml
+postgresql:
+  orders:
+    type: cluster
+    dbName: orders
+    userName: orders
+    credentials:
+      mode: static
+      externalSecrets:
+        selector:
+          provider: aws
+        remoteKey: production/orders
+    backup:
+      enabled: false
+```
+
+For a cluster, this creates a Password generator and a generator-backed
+ExternalSecret for `<cluster>-app`, plus `<cluster>-superuser` when superuser
+access is enabled. The app Secret is wired to `bootstrap.initdb.secret` and a
+managed login role; the postgres Secret is wired to `superuserSecret`. CNPG
+applies their passwords. Each PushSecret publishes the existing Secret, rather
+than invoking another generator. The backend keys are `<remoteKey>/app` and
+`<remoteKey>/superuser`. Without an explicit key, the prefix is
+`<book>/<chapter>/<namespace>/postgresql/<cluster>`.
+
+Register the existing store in the book's lexicon. For additional databases,
+publish optional credential settings and the store selector in the producer's
+`type: postgres` entry; do not publish a shared remote key there:
+
+```yaml
+appendix:
+  lexicon:
+    platform-secrets:
+      type: secret-store
+      provider: aws
+      mode: cluster
+      labels:
+        default: book
+    orders:
+      type: postgres
+      namespace: databases
+      credentials:
+        externalSecrets:
+          selector:
+            provider: aws
+      labels:
+        default: book
+```
+
+A consumer can then declare `postgresql.<name>: {type: db}`. It inherits the
+store selector and optional `credentials.mode` from the postgres registration,
+derives the integration from the selected store, and creates its Database and
+stable LOGIN owner with a CNPG `passwordSecret`. No Vault manager or
+`managerSuperuser` setting is needed. The source Secret defaults to
+`<cluster>-<owner>` in the CNPG namespace. If the application Secret is in a
+different namespace or has a different name, another ExternalSecret reads the
+published backend key. Its keys are `username`, `password`, `host`, `port`,
+`dbname` and `database`.
+
+| Credential field | Behavior in external-secrets mode |
+|---|---|
+| `mode` | Only `static` is supported; it is the default in this provider. |
+| `username` | Stable login; defaults to the glyph name for `db`, and `userName` or `app` for `cluster`. |
+| `secretName` | Application Secret name; defaults to the glyph name for `db`, and `<cluster>-app` for `cluster`. |
+| `sourceSecretName` | `db` only: override the source Secret in the CNPG namespace. |
+| `namespace` | `db` only: namespace for the application copy; defaults to the application's namespace. |
+| `externalSecrets.selector` | Optional selector for a `type: secret-store` lexicon entry, resolved by `runicIndexer` with its existing fallback rules. Name and kind come from that entry (`mode: cluster` selects `ClusterSecretStore`). |
+| `externalSecrets.consumerSelector` | Optional selector for the application copy; defaults to the publication selector. Both entries must address the same backend secret. Namespaced stores must exist in the namespace of the resource that references them. |
+| `externalSecrets.remoteKey` | Exact backend key for `db`; prefix for `cluster`. A `db` default includes book, chapter, application namespace, cluster and database. |
+| `externalSecrets.password` | ESO Password generator spec overrides. |
+| `externalSecrets.rotationInterval` | Optional interval such as `720h`; omission uses `CreatedOnce` with no periodic rotation. |
+| `externalSecrets.pushInterval` | Backend publication interval, default `1m`. |
+| `externalSecrets.refreshInterval` | Application copy refresh interval, default `1m`. |
+
+Rotation updates a single persisted source Secret, which CNPG and PushSecret
+observe independently. Backend and application synchronization is eventual;
+applications must reload credentials or restart, and can briefly see authentication
+failures during rotation. The generated Secrets are orphaned on deletion and
+PushSecret uses `deletionPolicy: None` to retain the backend copy. A lost source
+Secret is generated again; to preserve an existing credential on recovery, restore
+that source Secret from the backend before enabling its generator. Recovery of
+the database contents remains the separate CNPG backup/restore workflow.
+
+Selecting an ESO store disables Vault engine registration; combining that
+selection with `dbEngine.enabled: true` is rejected. With no store registration,
+`cluster` keeps its raw CNPG behavior without generating credential resources;
+`db` requires a matching store. Existing selectors remain usable:
+`dbEngine.selector` for clusters and `vaultSelector` (or `selector`) for database
+consumers. `credentials.externalSecrets.selector`, when present, takes precedence
+for either type. After discovery, child glyphs select the same registered store
+by its resolved name, rather than performing a separate provider selection.
+`type: instance` remains the raw CNPG resource: supply its `secret`,
+`superuserSecret` and `roles[].passwordSecret` references yourself. External
+backups can provide `backup.s3SecretRef`, `endpointURL` and `destinationPath`
+without a Vault or S3-provider lexicon entry; bucket creation and backup
+credentials remain external. Omitting a backup Secret still uses the existing
+S3 provisioning integration, which requires Vault.
 
 ### type: cluster
 
@@ -1136,7 +1266,7 @@ and review Strimzi upgrade notes before changing either.
 
 ## S3 Glyph
 
-The s3 glyph provides S3-compatible object storage integration with automatic credential management via Vault and SeaweedFS.
+The s3 glyph provides S3-compatible object storage integration with automatic credential management via Vault and VersityGW.
 
 ### type: bucket
 
@@ -1181,19 +1311,6 @@ envFrom:
   - secretRef:
       name: data-store
 ```
-
-### type: seaweed
-
-```yaml
-glyphs:
-  s3:
-    seaweedfs:
-      type: seaweed
-```
-
-This is the infrastructure-side counterpart to `bucket`. Deploy it in the SeaweedFS namespace. It creates an **EventSource**, **Sensor**, aggregator **ConfigMap**, **ServiceAccount** + RBAC, and a Vault **prolicy**. When any `s3-identity` Secret changes, the aggregator Pod rebuilds the SeaweedFS S3 config, restarts the S3 gateway, and creates buckets.
-
-You do not need to configure `seaweed` in application spells -- only in the SeaweedFS infrastructure spell.
 
 ### type: versity
 
@@ -1359,9 +1476,9 @@ glyphs:
 | `vault` | `secret`, `policy`, `role`, `prolicy`, `kubeAuth`, `customPasswordPolicy`, `databaseEngine`, `cryptoKey` | HashiCorp Vault secrets, policies, auth, and crypto key management |
 | `istio` | `virtualService`, `istio-gw` | Istio service mesh routing and gateway configuration |
 | `cert-manager` | `certificate`, `clientCertificate`, `clusterIssuer`, `dnsEndpoint`, `dnsEndpointSourced` | TLS certificate lifecycle and DNS record management |
-| `postgresql` | `cluster` | CloudNativePG PostgreSQL cluster provisioning |
+| `postgresql` | `cluster`, `db` | CloudNativePG clusters and application databases |
 | `kafka` | `cluster`, `nodePool`, `topic`, `user`, `connect`, `connector`, `mirrorMaker2`, `bridge`, `rebalance` | Strimzi-managed Kafka infrastructure and clients |
-| `s3` | `bucket`, `seaweed`, `versity` | S3-compatible storage with automatic credential management |
+| `s3` | `bucket`, `versity` | S3-compatible storage with automatic credential management |
 | `workflow` | `template` | Native WorkflowTemplate resource envelope |
 | `free-form` | `manifest` | Raw Kubernetes YAML escape hatch |
 | `keycloak` | `client`, `clientScope`, `realm`, `clusterKeycloak`, `clusterRealm`, `flow`, `group`, `idp`, `realmRole`, `user` | Keycloak identity and access management |
@@ -1372,7 +1489,7 @@ glyphs:
 | `common` | labels, names, validation | Shared template helpers (used internally by other glyphs) |
 | `runic-system` | `runic-indexer` | Internal lexicon indexing system |
 | `summon` | `serviceAccount`, `service`, workload, storage | Workload resource generation (used internally by some glyphs) |
-| `external-secrets` | external-secret, push-secret, secret-store | External Secrets Operator integration |
+| `external-secrets` | external-secret, generated-secret, push-secret, secret-store | External Secrets Operator integration |
 
 ## Multi-Glyph Composition
 

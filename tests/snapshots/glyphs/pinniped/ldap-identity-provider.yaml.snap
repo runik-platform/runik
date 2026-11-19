@@ -1,0 +1,45 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: LDAPIdentityProvider
+metadata:
+  name: corporate-directory
+  namespace: pinniped-supervisor
+spec:
+
+  bind:
+    secretName: ldap-bind-account
+  groupSearch:
+    attributes:
+      groupName: cn
+    base: ou=groups,dc=example,dc=com
+    filter: (&(objectClass=groupOfNames)(member={}))
+    userAttributeForFilter: dn
+  host: ldap.example.com:636
+  tls:
+    certificateAuthorityDataSource:
+      key: ca.crt
+      kind: ConfigMap
+      name: corporate-directory-ca
+  userSearch:
+    attributes:
+      uid: entryUUID
+      username: uid
+    base: ou=users,dc=example,dc=com
+    filter: (&(objectClass=person)(uid={}))

@@ -1,4 +1,1338 @@
 ---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eso-db-alerts
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    grafana_alert: "1"
+data:
+  postgresql-875455a476f6e6c6.yaml: |
+    apiVersion: 1
+    deleteRules:
+    - orgId: 1
+      uid: p875455a476f6-metrics-missing
+    - orgId: 1
+      uid: p875455a476f6-instances-missing
+    - orgId: 1
+      uid: p875455a476f6-primary-down
+    - orgId: 1
+      uid: p875455a476f6-slot-warning
+    - orgId: 1
+      uid: p875455a476f6-slot-critical
+    - orgId: 1
+      uid: p875455a476f6-slot-unlimited
+    - orgId: 1
+      uid: p875455a476f6-slot-budget
+    - orgId: 1
+      uid: p875455a476f6-disk-warning
+    - orgId: 1
+      uid: p875455a476f6-disk-critical
+    - orgId: 1
+      uid: p875455a476f6-disk-metrics
+    - orgId: 1
+      uid: p875455a476f6-connections
+    - orgId: 1
+      uid: p875455a476f6-collector-error
+    - orgId: 1
+      uid: p875455a476f6-streaming
+    - orgId: 1
+      uid: p875455a476f6-replication-lag
+    - orgId: 1
+      uid: p875455a476f6-archive-stalled
+    - orgId: 1
+      uid: p875455a476f6-archive-errors
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minimal-db-dashboard
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "PostgreSQL"
+data:
+  postgresql-f2fa31f9bfccc2d4.json: |
+    {
+      "description": "Standard CNPG and kubelet metrics. Missing volume data is reported by PostgreSQLVolumeMetricsMissing; it is not treated as free disk space.",
+      "editable": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "sum(cnpg_collector_up{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\"})",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "PostgreSQL instances up",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "max(cnpg_pg_replication_streaming_replicas{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"})",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Streaming replicas",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"}",
+              "legendFormat": "{{pod}} / {{slot_name}}",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL retained by replication slots",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_collector_pg_wal{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",value=\"size\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL directory size",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_pg_settings_setting{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\",name=\"max_slot_wal_keep_size\"} * 1048576",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Slot WAL limit (negative = unlimited)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_pg_replication_lag{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"replica\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Replication lag",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "1 - kubelet_volume_stats_available_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"minimal-db-[0-9]+(-wal)?\"} / kubelet_volume_stats_capacity_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"minimal-db-[0-9]+(-wal)?\"}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "refId": "A"
+            }
+          ],
+          "title": "PVC space used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "kubelet_volume_stats_available_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"minimal-db-[0-9]+(-wal)?\"}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "refId": "A"
+            }
+          ],
+          "title": "PVC space available",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_pg_stat_archiver_seconds_since_last_archival{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"}",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Seconds since successful WAL archive",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 32
+          },
+          "id": 10,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "increase(cnpg_pg_stat_archiver_failed_count{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"}[15m])",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL archive failures in 15 minutes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 40
+          },
+          "id": 11,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "sum by (namespace,pod,cnpg_cluster) (cnpg_backends_total{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\"}) / on(namespace,pod,cnpg_cluster) max by (namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",name=\"max_connections\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Connection utilization",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 40
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_pg_database_size_bytes{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"}",
+              "legendFormat": "{{datname}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Database sizes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 48
+          },
+          "id": 13,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "sum by (datname) (rate(cnpg_pg_stat_database_xact_commit{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\",role=\"primary\"}[5m]))",
+              "legendFormat": "{{datname}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Transactions per second",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 48
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "mimir"
+              },
+              "expr": "cnpg_collector_last_collection_error{namespace=\"glyphs-release\",cnpg_cluster=\"minimal-db\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Exporter collection errors",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "1m",
+      "schemaVersion": 39,
+      "tags": [
+        "postgresql",
+        "cloudnative-pg",
+        "runik"
+      ],
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "title": "PostgreSQL / glyphs-release / minimal-db",
+      "uid": "pg-f2fa31f9bfccc2d4",
+      "version": 1
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minimal-db-alerts
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+    grafana_alert: "1"
+data:
+  postgresql-f2fa31f9bfccc2d4.yaml: |
+    apiVersion: 1
+    deleteRules:
+    - orgId: 1
+      uid: pf2fa31f9bfcc-streaming
+    - orgId: 1
+      uid: pf2fa31f9bfcc-replication-lag
+    - orgId: 1
+      uid: pf2fa31f9bfcc-archive-stalled
+    - orgId: 1
+      uid: pf2fa31f9bfcc-archive-errors
+    groups:
+    - folder: PostgreSQL
+      interval: 1m
+      name: postgresql-f2fa31f9bfccc2d4
+      orgId: 1
+      rules:
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "1"
+          summary: No PostgreSQL metrics for five minutes; check discovery, scrape and
+            exporter.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: absent_over_time(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="minimal-db"}[5m])
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLMetricsMissing / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-metrics-missing
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "1"
+          summary: Fewer healthy PostgreSQL instances than configured; inspect replication
+            before WAL accumulates.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: clamp_min(1 - (sum(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="minimal-db"})
+              or vector(0)), 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLInstancesUnavailable / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-instances-missing
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "1"
+          summary: No healthy PostgreSQL primary is being monitored.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: clamp_min(1 - (sum(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary"})
+              or vector(0)), 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLPrimaryUnavailable / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-primary-down
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "3"
+          summary: A replication slot is retaining a significant fraction of its WAL filesystem.
+            Check the replica and remaining disk space.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary"}
+              / on(namespace,pod) group_left() (max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(minimal-db-[0-9]+)-wal"},
+              "pod", "$1", "persistentvolumeclaim", "(minimal-db-[0-9]+)-wal")) or on(namespace,pod)
+              max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(minimal-db-[0-9]+)"},
+              "pod", "$1", "persistentvolumeclaim", "(minimal-db-[0-9]+)")))
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.1
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotRetainedWALHigh / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-slot-warning
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "3"
+          summary: Replication slot WAL retention threatens primary and standby storage;
+            repair or rebuild the lagging replica.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary"}
+              / on(namespace,pod) group_left() (max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(minimal-db-[0-9]+)-wal"},
+              "pod", "$1", "persistentvolumeclaim", "(minimal-db-[0-9]+)-wal")) or on(namespace,pod)
+              max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(minimal-db-[0-9]+)"},
+              "pod", "$1", "persistentvolumeclaim", "(minimal-db-[0-9]+)")))
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.2
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLSlotRetainedWALCritical / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-slot-critical
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "3"
+          summary: An unlimited slot is retaining more than max_wal_size. Restore replication
+            or set a retention budget before storage fills.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: (cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary"}
+              > on(namespace,pod,cnpg_cluster) group_left() (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary",name="max_wal_size"}
+              * 1048576)) and on(namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary",name="max_slot_wal_keep_size"}
+              < 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotWALRetentionUnbounded / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-slot-unlimited
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "3"
+          summary: A slot has used over 75% of its configured WAL retention budget; catch
+            up before WAL becomes unavailable.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary"}
+              / on(namespace,pod,cnpg_cluster) group_left() ((cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="minimal-db",role="primary",name="max_slot_wal_keep_size"}
+              > 0) * 1048576)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.75
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotWALBudgetLow / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-slot-budget
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "7"
+          summary: PostgreSQL PVC free space is low. Inspect WAL retention, archiving
+            and volume growth.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: 1 - kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}
+              / kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.8
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLDiskAlmostFull / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-disk-warning
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "7"
+          summary: PostgreSQL PVC is critically full; act before PostgreSQL stops and
+            failover candidates run out of space.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: 1 - kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}
+              / kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.9
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLDiskCritical / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-disk-critical
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "7"
+          summary: PostgreSQL is up but its PVC metrics are missing. Disk alerts cannot
+            evaluate; check kubelet volume metrics.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="minimal-db"}
+              unless on(namespace,pod) label_replace((kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}
+              and on(namespace,persistentvolumeclaim) kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"minimal-db-[0-9]+(-wal)?"}),
+              "pod", "$1", "persistentvolumeclaim", "(minimal-db-[0-9]+)(-wal)?")
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 10m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLVolumeMetricsMissing / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-disk-metrics
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "11"
+          summary: PostgreSQL connection usage is approaching max_connections.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: sum by (namespace,pod,cnpg_cluster) (cnpg_backends_total{namespace="glyphs-release",cnpg_cluster="minimal-db"})
+              / on(namespace,pod,cnpg_cluster) max by (namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="minimal-db",name="max_connections"})
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.8
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLConnectionsHigh / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-connections
+      - annotations:
+          __dashboardUid__: pg-f2fa31f9bfccc2d4
+          __panelId__: "14"
+          summary: CNPG cannot collect one or more PostgreSQL metrics; inspect exporter
+            errors.
+        condition: C
+        data:
+        - datasourceUid: mimir
+          model:
+            editorMode: code
+            expr: cnpg_collector_last_collection_error{namespace="glyphs-release",cnpg_cluster="minimal-db"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: minimal-db
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLMetricsCollectionFailed / glyphs-release / minimal-db
+        uid: pf2fa31f9bfcc-collector-error
+---
 # Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
 # 
 #
@@ -19,6 +1353,49 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
+  name: eso-db
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  description: PostgreSQL cluster for eso-db
+
+  instances: 1
+  managed:
+     roles:
+      - ensure: present
+        login: true
+        name: orders
+        passwordSecret:
+          name: eso-db-app
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: eso-db-superuser
+  bootstrap:
+    initdb:
+      database: orders
+      owner: orders
+      secret:
+        name: eso-db-app
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: false
+      parameters:
+        barmanObjectName: eso-db
+
+  storage:
+    size: 1Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
   name: minimal-db
   labels:
     app.kubernetes.io/name: test
@@ -30,10 +1407,706 @@ metadata:
     spell: kaster
 spec:
   description: Minimal PostgreSQL cluster
+  inheritedMetadata:
+    annotations:
+      prometheus.io/path: /metrics
+      prometheus.io/port: "9187"
+      prometheus.io/scrape: "true"
 
   instances: 1
+  managed:
+     roles:
+      - ensure: present
+        login: true
+        name: app
+        passwordSecret:
+          name: minimal-db-app
 
   enableSuperuserAccess: true
+  superuserSecret:
+    name: minimal-db-superuser
+  bootstrap:
+    initdb:
+      database: app
+      owner: app
+      secret:
+        name: minimal-db-app
 
   storage:
     size: 1Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-eso-orders
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: pg-eso
+  name: orders
+  owner: orders
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-eso-eso-local
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  cluster:
+    name: pg-eso
+  name: eso-local
+  owner: eso-local
+  ensure: present
+  databaseReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: pg-eso-orders
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: pg-eso
+  name: orders
+  ensure: present
+  login: true
+  passwordSecret:
+    name: pg-eso-orders
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: pg-eso-eso-local
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  cluster:
+    name: pg-eso
+  name: eso-local
+  ensure: present
+  login: true
+  passwordSecret:
+    name: pg-eso-eso-local
+  databaseRoleReclaimPolicy: retain
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: pg-eso-orders
+  namespace: databases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: Periodic
+  refreshInterval: 720h
+  target:
+    name: pg-eso-orders
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: orders
+        dbname: orders
+        host: pg-eso-rw.databases.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: orders
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: pg-eso-orders
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: orders-db
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+
+spec:
+  secretStoreRef:
+    name: app-secrets
+    kind: SecretStore
+  refreshPolicy: Periodic
+  refreshInterval: 1m
+  target:
+    name: orders-db
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        database: orders
+        dbname: orders
+        host: pg-eso-rw.databases.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: orders
+  dataFrom:
+  - extract:
+      key: example/production/orders-app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eso-db-app
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: eso-db-app
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: orders
+        dbname: orders
+        host: eso-db-rw.glyphs-release.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: orders
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: eso-db-app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eso-db-superuser
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: eso-db-superuser
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: postgres
+        dbname: postgres
+        host: eso-db-rw.glyphs-release.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: postgres
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: eso-db-superuser
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: pg-eso-eso-local
+  namespace: databases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: pg-eso-eso-local
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: eso-local
+        dbname: eso-local
+        host: pg-eso-rw.databases.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: eso-local
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: pg-eso-eso-local
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minimal-db-app
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: minimal-db-app
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: app
+        dbname: app
+        host: minimal-db-rw.glyphs-release.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: app
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: minimal-db-app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minimal-db-superuser
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+
+spec:
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: minimal-db-superuser
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        database: postgres
+        dbname: postgres
+        host: minimal-db-rw.glyphs-release.svc
+        password: '{{ .password }}'
+        port: "5432"
+        username: postgres
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: minimal-db-superuser
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: eso-db
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  configuration:
+    destinationPath: "s3://example-backups/orders"
+    endpointURL: "https://s3.example.invalid"
+    s3Credentials:
+      accessKeyId:
+        name: external-backup-credentials
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: external-backup-credentials
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: "90d"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: pg-eso-orders
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: eso-db-app
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: eso-db-superuser
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: pg-eso-eso-local
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: minimal-db-app
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: minimal-db-superuser
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  allowRepeat: true
+  digits: 5
+  length: 32
+  symbolCharacters: -_@
+  symbols: 5
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: pg-eso-orders-publish
+  namespace: databases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: pg-eso-orders
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: example/production/orders-app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: eso-db-app-publish
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: eso-db-app
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: example/production/orders/app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: eso-db-superuser-publish
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: eso-db-superuser
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: example/production/orders/superuser
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: pg-eso-eso-local-publish
+  namespace: databases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: pg-eso-eso-local
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: test-postgresql/databases/glyphs-release/postgresql/pg-eso/eso-local
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: minimal-db-app-publish
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: minimal-db-app
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: test-postgresql/databases/glyphs-release/postgresql/minimal-db/app
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: minimal-db-superuser-publish
+  namespace: glyphs-release
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshInterval: 1m
+  updatePolicy: Replace
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: platform-secrets          
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: minimal-db-superuser
+  
+  data:
+    - match:
+        remoteRef:
+          remoteKey: test-postgresql/databases/glyphs-release/postgresql/minimal-db/superuser
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: eso-db-daily
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-postgresql
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-postgresql
+    chapter: databases
+    spell: kaster
+spec:
+  schedule: "0 0 3 * * *"
+  cluster:
+    name: eso-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  backupOwnerReference: self

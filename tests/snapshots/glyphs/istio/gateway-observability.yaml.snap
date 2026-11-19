@@ -1,0 +1,833 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "private-observability-dashboard"
+  namespace: "private-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "infrastructure/gateways"
+data:
+  gateway-errors.json: |
+    {
+      "description": "Métricas históricas desde Mimir y errores JSON desde Loki a partir del despliegue. Sólo se registran errores HTTP y conexiones sin código; no todo el tráfico TCP. IP observada y X-Forwarded-For se muestran por separado.",
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "metrics_other"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(response_code) (rate(istio_requests_total{source_workload_namespace=\"private-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\"}[$__rate_interval]))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Respuestas por código",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "metrics_other"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(destination_service_name,response_code) (rate(istio_requests_total{source_workload_namespace=\"private-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\",response_code!~\"[123]..\"}[$__rate_interval]))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por servicio y código",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "metrics_other"
+          },
+          "description": "NR: sin ruta; UF: conexión al backend; UH: sin backend sano; UT: timeout; DPE: protocolo del cliente. Flags -: consultar response_code_details en logs.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(destination_service_name,response_code,response_flags) (increase(istio_requests_total{source_workload_namespace=\"private-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\",response_code!~\"[123]..\"}[$__range]))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por servicio y motivo (intervalo)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "metrics_other"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95,sum by(le,destination_service_name) (rate(istio_request_duration_milliseconds_bucket{source_workload_namespace=\"private-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\"}[$__rate_interval])))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Latencia p95 por servicio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "logs_other"
+          },
+          "description": "IP del socket observado por la gateway; puede pertenecer a un proxy, NAT o router NetBird.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(20,sum by(peer_ip) (count_over_time({namespace=\"private-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "IPs de conexión con más errores",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "logs_other"
+          },
+          "description": "Encabezado declarado por el cliente/proxies. No equivale a una IP verificada.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(20,sum by(forwarded_for) (count_over_time({namespace=\"private-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Orígenes reenviados declarados (X-Forwarded-For)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "logs_other"
+          },
+          "description": "Rutas sin query string; sólo errores registrados después del despliegue.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(30,sum by(authority,path,response_code) (count_over_time({namespace=\"private-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Hosts y rutas con más errores",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "logs_other"
+          },
+          "description": "Permite distinguir respuestas de las apps de rechazos y fallos de la gateway.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(30,sum by(upstream_cluster,response_code,response_code_details) (count_over_time({namespace=\"private-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por backend y detalle",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "logs_other"
+          },
+          "description": "Expandir JSON para IP de conexión, X-Forwarded-For, método, host, ruta, user-agent, backend, flags y duración. El filtro Servicio sólo afecta las métricas; Host/Ruta sólo afectan los logs.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "enableLogDetails": true,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"private-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\"",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Peticiones fallidas: IP, host, ruta y motivo",
+          "type": "logs"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": [
+        "istio",
+        "gateways",
+        "errors",
+        "private-ingress"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": {
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "metrics_other"
+            },
+            "includeAll": true,
+            "label": "Servicio (métricas)",
+            "multi": true,
+            "name": "service",
+            "query": "label_values(istio_requests_total{source_workload_namespace=\"private-ingress\",reporter=\"source\"},destination_service_name)",
+            "refresh": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Código (regex)",
+            "name": "code",
+            "query": ".*",
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Host (regex, logs)",
+            "name": "host",
+            "query": ".*",
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Ruta (regex, logs)",
+            "name": "path",
+            "query": ".*",
+            "type": "textbox"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timezone": "browser",
+      "title": "Private gateway",
+      "uid": "private-errors",
+      "version": 1
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "public-observability-dashboard"
+  namespace: "public-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "infrastructure/gateways"
+data:
+  gateway-errors.json: |
+    {
+      "description": "Métricas históricas desde Mimir y errores JSON desde Loki a partir del despliegue. Sólo se registran errores HTTP y conexiones sin código; no todo el tráfico TCP. IP observada y X-Forwarded-For se muestran por separado.",
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(response_code) (rate(istio_requests_total{source_workload_namespace=\"public-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\"}[$__rate_interval]))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Respuestas por código",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(destination_service_name,response_code) (rate(istio_requests_total{source_workload_namespace=\"public-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\",response_code!~\"[123]..\"}[$__rate_interval]))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por servicio y código",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "description": "NR: sin ruta; UF: conexión al backend; UH: sin backend sano; UT: timeout; DPE: protocolo del cliente. Flags -: consultar response_code_details en logs.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {},
+          "targets": [
+            {
+              "expr": "sum by(destination_service_name,response_code,response_flags) (increase(istio_requests_total{source_workload_namespace=\"public-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\",response_code!~\"[123]..\"}[$__range]))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por servicio y motivo (intervalo)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95,sum by(le,destination_service_name) (rate(istio_request_duration_milliseconds_bucket{source_workload_namespace=\"public-ingress\",reporter=\"source\",destination_service_name=~\"$service\",response_code=~\"$code\"}[$__rate_interval])))",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Latencia p95 por servicio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "IP del socket observado por la gateway; puede pertenecer a un proxy, NAT o router NetBird.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(20,sum by(peer_ip) (count_over_time({namespace=\"public-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "IPs de conexión con más errores",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "Encabezado declarado por el cliente/proxies. No equivale a una IP verificada.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(20,sum by(forwarded_for) (count_over_time({namespace=\"public-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Orígenes reenviados declarados (X-Forwarded-For)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "Rutas sin query string; sólo errores registrados después del despliegue.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(30,sum by(authority,path,response_code) (count_over_time({namespace=\"public-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Hosts y rutas con más errores",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "Permite distinguir respuestas de las apps de rechazos y fallos de la gateway.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {},
+          "targets": [
+            {
+              "expr": "topk(30,sum by(upstream_cluster,response_code,response_code_details) (count_over_time({namespace=\"public-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\" [$__range])))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Errores por backend y detalle",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "Expandir JSON para IP de conexión, X-Forwarded-For, método, host, ruta, user-agent, backend, flags y duración. El filtro Servicio sólo afecta las métricas; Host/Ruta sólo afectan los logs.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "enableLogDetails": true,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"public-ingress\",container=\"istio-proxy\"} | json | log_type=\"gateway_access\" | response_code=~\"$code\" | authority=~\"$host\" | path=~\"$path\" | __error__=\"\"",
+              "instant": false,
+              "legendFormat": "{{response_code}} {{destination_service_name}} {{response_flags}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Peticiones fallidas: IP, host, ruta y motivo",
+          "type": "logs"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": [
+        "istio",
+        "gateways",
+        "errors",
+        "public-ingress"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": {
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "mimir"
+            },
+            "includeAll": true,
+            "label": "Servicio (métricas)",
+            "multi": true,
+            "name": "service",
+            "query": "label_values(istio_requests_total{source_workload_namespace=\"public-ingress\",reporter=\"source\"},destination_service_name)",
+            "refresh": 1,
+            "type": "query"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Código (regex)",
+            "name": "code",
+            "query": ".*",
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Host (regex, logs)",
+            "name": "host",
+            "query": ".*",
+            "type": "textbox"
+          },
+          {
+            "current": {
+              "text": ".*",
+              "value": ".*"
+            },
+            "label": "Ruta (regex, logs)",
+            "name": "path",
+            "query": ".*",
+            "type": "textbox"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timezone": "browser",
+      "title": "Gateway — public-ingress — errors and origins",
+      "uid": "gateway-c7545adec5a5b7267c4bc036",
+      "version": 1
+    }
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "private-observability"
+  namespace: "private-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - filter:
+      expression: response.code >= 500
+    providers:
+    - name: custom-json
+  selector:
+    matchLabels:
+      istio: private
+  tracing:
+  - providers:
+    - name: tracing
+    randomSamplingPercentage: 100
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "public-observability"
+  namespace: "public-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - filter:
+      expression: '!has(response.code) || response.code == 0 || response.code >= 400'
+    providers:
+    - name: gateway-errors-json
+  selector:
+    matchLabels:
+      istio: public
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "telemetry-only"
+  namespace: "custom-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - filter:
+      expression: '!has(response.code) || response.code == 0 || response.code >= 400'
+    providers:
+    - name: gateway-errors-json
+  selector:
+    matchLabels:
+      istio: no-dashboard

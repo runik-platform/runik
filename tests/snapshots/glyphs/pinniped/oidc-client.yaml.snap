@@ -1,0 +1,37 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: config.supervisor.pinniped.dev/v1alpha1
+kind: OIDCClient
+metadata:
+  name: dashboard
+  namespace: pinniped-supervisor
+spec:
+
+  allowedGrantTypes:
+  - authorization_code
+  - refresh_token
+  allowedRedirectURIs:
+  - https://dashboard.example.com/callback
+  allowedScopes:
+  - openid
+  - offline_access
+  - username
+  - groups
+  tokenLifetimes:
+    idTokenSeconds: 300

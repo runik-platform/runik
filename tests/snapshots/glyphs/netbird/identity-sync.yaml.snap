@@ -1,0 +1,49 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdIdentitySync
+metadata:
+  name: keycloak-members
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: netbird
+    app.kubernetes.io/managed-by: Helm
+    spelbook: netbird
+    chapter: networking
+    spell: kaster
+spec:
+  source: "keycloak-members"
+  instanceId: "netbird/default"
+  provider:
+    baseUrl: "https://sso.example.com"
+    realm: "tyl"
+    clientId: "netbird-identity-sync"
+    credentialsSecretRef:
+      name: "netbird-keycloak-client"
+      key: "client-secret"
+  realmRoles:
+    - "fwck-users"
+    - "flaners"
+    - "tyl-devs"
+  adoptExistingUsers: false
+  adoptExistingJWTGroups: false
+  pollIntervalSeconds: 60
+  deletionPolicy: "Retain"

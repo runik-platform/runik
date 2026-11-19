@@ -1,0 +1,280 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: routers-tyl-fwck
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "routers-tyl-fwck"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: resources-tyl-fwck-lan
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "resources-tyl-fwck-lan"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSRecord
+metadata:
+  name: fwck-services-storage-fwck-services
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  zoneRef: "fwck-services"
+  name: "storage"
+  type: "A"
+  content: "10.42.0.2"
+  ttl: 300
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSZone
+metadata:
+  name: fwck-services
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "services"
+  domain: "services.example.com"
+  enabled: true
+  enableSearchDomain: false
+  distributionGroupRefs:
+    - "fwck-users"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNameserverGroup
+metadata:
+  name: fwck-dns
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwck-dns"
+  nameservers:
+    - ip: "10.42.0.2"
+      nsType: "udp"
+      port: 53
+  domains:
+    - "fwck"
+  enabled: true
+  primary: false
+  searchDomainsEnabled: true
+  groupRefs:
+    - "fwck-users"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetwork
+metadata:
+  name: tyl-fwck-lan
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwck"
+  description: "FWCK physical LAN"
+  enabled: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkResource
+metadata:
+  name: tyl-fwck-lan-cidr
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  networkRef:
+    name: "tyl-fwck-lan"
+  name: "lan"
+  description: "Complete site LAN"
+  address: "10.42.0.0/24"
+  enabled: true
+  groupRefs:
+    - "resources-tyl-fwck-lan"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkResource
+metadata:
+  name: fwck-pihole
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  networkRef:
+    name: "tyl-fwck-lan"
+  name: "pihole"
+  description: "Local DNS"
+  address: "10.42.0.2/32"
+  enabled: true
+  groupRefs:
+    - "resources-tyl-fwck-lan"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkRouter
+metadata:
+  name: account-router-tyl-fwck
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  networkRef:
+    name: "tyl-fwck-lan"
+  peerGroupRefs:
+    - "routers-tyl-fwck"
+  enabled: true
+  masquerade: true
+  metric: 100
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: fwck-users-lan-access
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwck-users-lan-access"
+  state: "present"
+  description: "Allow selected groups to reach fwck resources"
+  enabled: true
+  sourceGroupRefs:
+    - "fwck-users"
+  destinationGroupRefs:
+    - "resources-tyl-fwck-lan"
+  rules:
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: lan
+      protocol: all
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: fwck-users-prorator-access
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwck-users-prorator-access"
+  state: "present"
+  description: "Allow selected groups to reach routers for fwck"
+  enabled: true
+  sourceGroupRefs:
+    - "fwck-users"
+  destinationGroupRefs:
+    - "routers-tyl-fwck"
+  rules:
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: dns-udp
+      ports:
+      - 53
+      protocol: udp
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: dns-tcp
+      ports:
+      - 53
+      protocol: tcp

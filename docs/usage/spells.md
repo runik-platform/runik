@@ -177,6 +177,36 @@ glyphs:
 
 **Why the `glyphs:` wrapper?** External charts do not understand `istio:` or `cert-manager:` keys. The wrapper isolates infrastructure config from the external chart values.
 
+### Git path sources with Kustomize
+
+Use a source-level `kustomize` map to configure a Kustomize base directly from
+the spell:
+
+```yaml
+name: operator
+repository: https://git.example.com/platform/operator.git
+path: config/default
+revision: v1.0.0
+kustomize:
+  images:
+    - controller=registry.example.com/operator:1.0.0
+```
+
+Librarian copies the map to that source's ArgoCD `kustomize` options and emits
+no `helm` block for it. The image override belongs to the consumer spell; the
+referenced repository can retain a generic image placeholder. Kaster and other
+sources keep their own renderer settings.
+
+The value must be a map, requires `path`, and cannot accompany `chart`.
+`kustomize: {}` selects Kustomize defaults. `values` remains Helm-specific;
+ArgoCD validates the Kustomize options supported by its installed version.
+Existing spells without this optional field retain their renderer selection,
+including `appParams.noHelm`.
+
+Git-based runes accept the same field on each rune. See
+[Runes](runes.md#kustomize-runes) and the complete
+[Kustomize source contract](kustomize.md).
+
 ### Type 5: Infrastructure Only (glyph keys + workload disabled)
 
 When a spell has no `chart:` and no `path:`, the defaultTrinket (summon) always runs. To create a spell with only infrastructure glyphs and no workload, disable the workload explicitly with `workload.enabled: false`:

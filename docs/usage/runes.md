@@ -22,7 +22,10 @@ This spell deploys your application via summon and adds a Redis instance from th
 
 ## What Are Runes?
 
-A **rune** is an external Helm chart (or Git-based chart) added as an additional ArgoCD source alongside your primary spell. When you add `runes:` to any spell, the Librarian appends each rune as a separate source entry in the generated ArgoCD Application manifest.
+A **rune** is an additional ArgoCD source alongside your primary spell. It can
+reference an external Helm chart, a Git-based chart or a Kustomize path. When you
+add `runes:`, Librarian appends each rune as a separate source entry in the
+generated ArgoCD Application manifest.
 
 The ArgoCD Application ends up with multiple sources:
 
@@ -78,11 +81,36 @@ runes:
 |---|---|---|
 | `repository` | Yes (for external charts) | Helm repository URL or Git repository URL |
 | `chart` | Yes (for Helm repos) | Chart name within the repository |
-| `path` | Yes (for Git repos) | Path to the chart within the Git repository |
+| `path` | Yes (for Git repos) | Path to the chart or Kustomize base within the Git repository |
 | `revision` | Yes | Chart version (for Helm repos) or branch/tag/commit (for Git repos) |
 | `values` | No | Helm values passed to the chart |
 | `name` | No | Human-readable identifier for the rune |
 | `appParams` | No | ArgoCD Application parameters specific to this rune |
+| `kustomize` | No | Source-specific ArgoCD Kustomize options; requires `path`, excludes `chart` and suppresses Helm options |
+
+## Kustomize Runes
+
+Declare a rune's image overrides and other Kustomize options on that rune:
+
+```yaml
+name: service
+image: registry.example.com/service:1.0.0
+runes:
+  - repository: https://git.example.com/platform/operator.git
+    path: config/default
+    revision: v1.0.0
+    kustomize:
+      images:
+        - controller=registry.example.com/operator:1.0.0
+```
+
+Librarian emits `kustomize` on this rune's source, without a `helm` block. The
+options do not affect the primary source, other runes or trinkets. Helm and
+Kustomize runes can coexist in one spell. An empty map selects Kustomize defaults;
+non-map values, a missing `path` or a simultaneous `chart` fail during rendering.
+
+See the [Kustomize source contract](kustomize.md) for
+renderer selection, supported option handling and compatibility rules.
 
 ## Rune with Custom Values
 

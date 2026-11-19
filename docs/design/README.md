@@ -28,7 +28,6 @@ remaining documents as needed.
 ### Primitives
 
 - **glyphs.md** -- Glyph anatomy, type system, submodule distribution
-- **mongodb-glyph.md** -- Percona lifecycle and generic MongoDB database/user operations
 - **trinkets.md** -- Registration, trigger mechanism, internal design
 - **merge-system.md** -- Cascading merge, appendix, localAppendix, defaultTrinket
 

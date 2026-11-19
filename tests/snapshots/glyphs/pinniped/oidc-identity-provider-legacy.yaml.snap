@@ -1,0 +1,36 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: OIDCIdentityProvider
+metadata:
+  name: keycloak
+  namespace: pinniped-supervisor
+spec:
+
+  authorizationConfig:
+    additionalScopes:
+    - email
+    - profile
+    - groups
+  claims:
+    groups: groups
+    username: preferred_username
+  client:
+    secretName: keycloak-oidc-client
+  issuer: https://sso.example.com/realms/workforce

@@ -1,0 +1,66 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composition
+data:
+  annotations: '{"checksum/config":"abc123","kubernetes.io/description":"Root description","owner":"service"}'
+  labels: '{"app.kubernetes.io/component":"backend","app.kubernetes.io/instance":"test","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"common-api","app.kubernetes.io/part-of":"example-book","chapter":"production","covenant.runik.io/member":"app","environment":"production","local-only":"42","revision":"001","root-only":"true","spelbook":"example-book","spell":"common-api","team":"generated"}'
+  selectors: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/name":"common-api"}'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: defaults
+data:
+  annotations: '{}'
+  labels: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"test","spell":"kaster"}'
+  selectors: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/name":"test"}'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: description
+data:
+  annotations: '{"kubernetes.io/description":"Description fallback"}'
+  labels: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"test","spell":"kaster"}'
+  selectors: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/name":"test"}'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: generated-wins
+data:
+  annotations: '{"enabled":"false","kubernetes.io/description":"Root description","owner":"generated","port":"8080"}'
+  labels: '{"app.kubernetes.io/component":"backend","app.kubernetes.io/instance":"test","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"common-api","app.kubernetes.io/part-of":"example-book","chapter":"production","covenant.runik.io/member":"app","environment":"production","revision":"001","root-only":"true","spelbook":"example-book","spell":"common-api","team":"root"}'
+  selectors: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/name":"common-api"}'
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inherited
+data:
+  annotations: '{"kubernetes.io/description":"Root description","owner":"platform"}'
+  labels: '{"app.kubernetes.io/component":"backend","app.kubernetes.io/instance":"test","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"common-api","app.kubernetes.io/part-of":"example-book","chapter":"production","covenant.runik.io/member":"app","environment":"production","revision":"001","root-only":"true","spelbook":"example-book","spell":"common-api","team":"root"}'
+  selectors: '{"app.kubernetes.io/instance":"test","app.kubernetes.io/name":"common-api"}'
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#

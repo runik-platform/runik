@@ -1,0 +1,50 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerEnrollment
+metadata:
+  name: cluster-router
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: netbird
+    app.kubernetes.io/managed-by: Helm
+    spelbook: netbird
+    chapter: networking
+    spell: kaster
+spec:
+  mode: "enroll"
+  peerIdentity:
+    hostname: "cluster-router"
+  workloadRef:
+    apiVersion: "apps/v1"
+    kind: "StatefulSet"
+    name: "cluster-router"
+  enrollment:
+    secretRef:
+      name: "cluster-router-enrollment"
+      key: "setupKey"
+    expiresInSeconds: 600
+  groupRefs:
+    - "routing-peers"
+  ownership:
+    takeOwnership: false
+  deletionPolicy: "Retain"
+  restoreSettingsOnDelete: true

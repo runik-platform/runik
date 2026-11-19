@@ -265,7 +265,7 @@ This separation means:
   touching summon, and vice versa.
 - ArgoCD can diff and sync each source independently.
 
-## Why Glyphs Are Tested Only via Kaster
+## How Glyph Snapshots Use Kaster
 
 Glyphs are Helm template libraries. They consist entirely of `define` blocks
 (files named `_*.tpl` or `*.tpl`) and produce no output on their own. A glyph
@@ -282,21 +282,16 @@ Glyphs require kaster's orchestration context to render:
 4. The dispatch loop in `kaster.yaml` must call the glyph template with the
    correct `(list $root $glyphDefinition)` signature.
 
-To test a glyph, you create an example values file (see
-`charts/kaster/examples/`) and render it through kaster:
+Run these commands from the Runik root to render and compare
+`charts/glyphs/vault/examples/policy-role.yaml` through kaster.
 
 ```bash
-# Test vault glyph through kaster
-helm template kaster charts/kaster/ \
-  -f charts/kaster/examples/my-vault-test.yaml
-
-# The make target automates this pattern
-make glyphs vault
+make render glyph vault policy-role.yaml
+make test glyph vault policy-role.yaml
 ```
 
-The `make glyphs <name>` target runs `helm template` against kaster with the
-appropriate test values for the named glyph. This is the canonical way to
-develop and validate glyphs.
+Omit the filename to test every example for the glyph. The separate
+`charts/kaster/examples/` directory supplies Kaster's direct smoke tests.
 
 ## Worked Example
 

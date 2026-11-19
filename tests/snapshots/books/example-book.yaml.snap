@@ -26,6 +26,8 @@ kind: Application
 metadata:
   name: cert-manager
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -307,6 +309,8 @@ kind: Application
 metadata:
   name: covenant-example
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "7"
 spec:
@@ -456,6 +460,8 @@ kind: Application
 metadata:
   name: keycloak
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -760,6 +766,8 @@ kind: Application
 metadata:
   name: nightly-backup
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -918,6 +926,8 @@ kind: Application
 metadata:
   name: pg-infra
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
@@ -1081,6 +1091,8 @@ kind: Application
 metadata:
   name: vault
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "6"
 spec:
@@ -1266,6 +1278,8 @@ kind: Application
 metadata:
   name: console
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -1577,6 +1591,8 @@ kind: Application
 metadata:
   name: public
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -1741,6 +1757,8 @@ kind: Application
 metadata:
   name: saml
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -1910,6 +1928,8 @@ kind: Application
 metadata:
   name: service
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   
@@ -2080,6 +2100,8 @@ kind: Application
 metadata:
   name: apply-branch-rules
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: example-book
   

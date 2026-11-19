@@ -24,6 +24,115 @@ bookrack/                          <- The bookrack (root)
     └── ...
 ```
 
+## Create a book in your own repository
+
+Start in the root of your content repository. The example uses `my-book` for the book directory, index name, and Helm release. Your repository can have any name.
+
+```text
+.
+├── .gitmodules
+├── bookdeclaration.yaml
+├── bookrack/my-book/
+│   ├── index.yaml
+│   └── apps/web.yaml
+└── librarian/                  # Git submodule
+    └── bookrack -> ../bookrack
+```
+
+### Add Librarian from GitHub
+
+Initialize the content repository and add the public Librarian chart. For an existing Git repository, start at `git submodule add`. This example pins the published `v1.2.7` releases of Librarian and Summon.
+
+```bash
+git init
+git submodule add https://github.com/runik-platform/librarian.git librarian
+git -C librarian checkout --detach v1.2.7
+git add librarian
+mkdir -p bookrack/my-book/apps
+```
+
+The resulting `.gitmodules` entry records the public clone URL.
+
+```ini
+[submodule "librarian"]
+    path = librarian
+    url = https://github.com/runik-platform/librarian.git
+```
+
+The submodule already tracks the `bookrack -> ../bookrack` symlink. It lets Helm read your book from inside the chart. On a fresh clone of the content repository, `git submodule update --init --recursive` restores the recorded commit.
+
+### Declare the book and its first spell
+
+Save the book index as `bookrack/my-book/index.yaml`. Librarian reads the chapters listed here. The `defaultTrinket` selects Summon for spells without a `chart` or `path` of their own.
+
+```yaml
+name: my-book
+chapters: [apps]
+defaultTrinket:
+  repository: https://github.com/runik-platform/summon.git
+  path: .
+  revision: v1.2.7
+```
+
+Save the workload as `bookrack/my-book/apps/web.yaml`.
+
+```yaml
+name: web
+namespace: my-book
+image:
+  repository: docker.io/library
+  name: nginx
+  tag: stable-alpine
+```
+
+### Render the book and workload locally
+
+Render the book from the root of the content repository.
+
+```bash
+helm template my-book ./librarian --namespace argocd
+```
+
+Look for `kind: Application` with `metadata.name: web` in the output. Its Summon source is at `v1.2.7` and its destination namespace is `my-book`. The Helm release name `my-book` selects `bookrack/my-book/index.yaml`.
+
+To see the Kubernetes resources before deploying, use `yq` to extract that Application and its Helm values. Clone the Git source at the tag emitted by Librarian, including Summon's submodules.
+
+```bash
+render_dir=$(mktemp -d)
+helm template my-book ./librarian --namespace argocd |
+  yq -e 'select(.kind == "Application" and .metadata.name == "web")' > "$render_dir/web.yaml"
+summon_repo=$(yq -r '.spec.sources[0].repoURL' "$render_dir/web.yaml")
+summon_tag=$(yq -r '.spec.sources[0].targetRevision' "$render_dir/web.yaml")
+git clone --quiet --recurse-submodules --branch "$summon_tag" "$summon_repo" "$render_dir/summon"
+yq '.spec.sources[0].helm.valuesObject' "$render_dir/web.yaml" |
+  helm template web "$render_dir/summon" --namespace my-book --values -
+```
+
+The second render uses the child Application's release name (`web`) and destination namespace (`my-book`). It produces a Deployment, Service, and ServiceAccount named `web`. Both renders run locally without a Kubernetes cluster.
+
+### Bootstrap the book in Argo CD
+
+Save the parent Application as `bookdeclaration.yaml` at the content repository root. Replace the two placeholders with the clone URL and published branch, tag, or commit of **your content repository**. Argo CD checks out that revision and runs Helm at `path: librarian` with `my-book` as the release name.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-book
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: <content-repository-url>
+    targetRevision: <content-revision>
+    path: librarian
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+```
+
+Commit `.gitmodules`, the `librarian` submodule pointer, `bookrack/`, and `bookdeclaration.yaml` in the content repository. Publish the revision, then register and sync the parent Application through your Argo CD bootstrap process. Argo CD needs read access to the content repository and its submodule sources.
+
 ## Books
 
 A **book** represents a complete environment or tenant. Examples: `production`, `staging`, `customer-acme`, `us-west`.
@@ -167,7 +276,10 @@ appendix:
 **Spell** (`production/apps/api-service.yaml`):
 ```yaml
 name: api-service
-image: myorg/api:v1.0
+image:
+  repository: myorg
+  name: api
+  tag: v1.0
 resources:
   requests:
     cpu: 100m
@@ -179,7 +291,8 @@ resources:
 # Values passed to summon chart
 name: api-service
 image:
-  repository: myorg/api
+  repository: myorg
+  name: api
   tag: v1.0
 resources:
   requests:

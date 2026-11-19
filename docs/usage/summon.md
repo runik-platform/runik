@@ -4,7 +4,7 @@
 
 ```yaml
 name: my-app
-image: myorg/app:v1.0
+image: {name: myorg/app, tag: "v1.0"}
 
 workload:
   replicas: 3
@@ -17,7 +17,7 @@ service:
 
 Summon is the primary Helm chart in Runik Platform for deploying workloads to Kubernetes. It lives at `charts/summon/` and serves as the universal workload chart -- you describe what you want, and summon generates the correct Kubernetes resources.
 
-When a spell has no `chart:` or `path:`, the Librarian uses summon (the defaultTrinket) as the primary source. Summon then renders the appropriate workload (Deployment, StatefulSet, Job, CronJob, or DaemonSet) along with associated resources like Services, ConfigMaps, Secrets, ServiceAccounts, and PodDisruptionBudgets.
+When a spell has no `chart:` or `path:`, the Librarian uses summon (the defaultTrinket) as the primary source. Summon then renders the appropriate workload (Deployment, StatefulSet, Job, CronJob, or DaemonSet) along with associated resources like Services, ConfigMaps, Secrets, and ServiceAccounts.
 
 You configure summon by adding keys directly to your spell YAML. Every key documented here is a summon value.
 
@@ -27,7 +27,7 @@ Summon ships its own internal glyph dispatcher. When a spell has no `chart:` and
 
 ```yaml
 name: my-app
-image: myorg/app:v1.0
+image: {name: myorg/app, tag: "v1.0"}
 
 vault:                 # <-- handled by summon's internal dispatcher
   creds:
@@ -56,20 +56,20 @@ Summon supports five Kubernetes workload types. You select the type with `worklo
 
 ```yaml
 name: api-service
-image: myorg/api:v2.1.0
+image: {name: myorg/api, tag: "v2.1.0"}
 
 workload:
   type: deployment
   replicas: 3
 ```
 
-Deployment is the default workload type. It manages stateless pods with rolling update strategy. You control the number of replicas with `workload.replicas` (defaults to 1).
+Deployment is the default workload type. It manages stateless pods with rolling update strategy. When autoscaling is disabled, `workload.replicas` controls the number of replicas (defaults to 1 and preserves an explicit 0).
 
 ### StatefulSet
 
 ```yaml
 name: postgres
-image: postgres:14
+image: {name: postgres, tag: "14"}
 
 workload:
   type: statefulset
@@ -87,7 +87,7 @@ StatefulSets provide stable network identities and persistent storage. Each pod 
 
 ```yaml
 name: nightly-backup
-image: myorg/backup:v1.0
+image: {name: myorg/backup, tag: "v1.0"}
 
 workload:
   type: cronjob
@@ -102,7 +102,7 @@ CronJobs run on a schedule defined by a cron expression. You set `backoffLimit` 
 
 ```yaml
 name: db-migration
-image: myorg/migrate:v1.0
+image: {name: myorg/migrate, tag: "v1.0"}
 
 workload:
   type: job
@@ -120,7 +120,7 @@ Jobs run a task to completion. They differ from CronJobs in that they run once w
 
 ```yaml
 name: log-collector
-image: myorg/fluentd:v1.16
+image: {name: myorg/fluentd, tag: "v1.16"}
 
 workload:
   type: daemonset
@@ -133,7 +133,7 @@ DaemonSets run one pod per node. You do not set `replicas` -- Kubernetes schedul
 | Field | Description | Default |
 |-------|-------------|---------|
 | `workload.type` | `deployment`, `statefulset`, `job`, `cronjob`, `daemonset` | `deployment` |
-| `workload.replicas` | Number of pod replicas | `1` |
+| `workload.replicas` | Pod replicas when autoscaling is disabled; explicit `0` is preserved | `1` |
 | `workload.schedule` | Cron expression (cronjob only) | -- |
 | `workload.backoffLimit` | Retry count (job/cronjob) | -- |
 | `workload.activeDeadlineSeconds` | Max runtime in seconds (job/cronjob) | -- |
@@ -143,7 +143,7 @@ DaemonSets run one pod per node. You do not set `replicas` -- Kubernetes schedul
 
 ```yaml
 name: api-service
-image: myorg/api:v2.1.0
+image: {name: myorg/api, tag: "v2.1.0"}
 
 command:
   - /app/server
@@ -173,17 +173,14 @@ securityContext:
   fsGroup: 2000
 ```
 
-You configure the primary container with top-level keys. The `image` field accepts either a short string (`myorg/api:v2.1.0`) or a structured object. The `command` overrides the container entrypoint, and `args` supplies arguments.
+Configure the primary container with top-level keys. The `command` field sets its entrypoint and `args` supplies arguments.
 
 ### Image Configuration
 
 ```yaml
-# Short form
-image: myorg/api:v2.1.0
-
-# Structured form
 image:
-  repository: myorg/api
+  repository: myorg
+  name: api
   tag: v2.1.0
   pullPolicy: IfNotPresent
 
@@ -191,14 +188,18 @@ imagePullSecrets:
   - name: registry-credentials
 ```
 
-Both forms are equivalent. Use the short form when you only need repository and tag. Use the structured form when you need to set `pullPolicy` or when repository and tag come from different merge layers.
+This renders `myorg/api:v2.1.0`. For an existing spell that uses a top-level
+image string, set the top-level `imagePullPolicy` explicitly so Summon can
+resolve the pull policy. Init containers and sidecars can use image strings
+with a structured primary image.
 
 ### Container Fields Reference
 
 | Field | Description | Default |
 |-------|-------------|---------|
 | `image` | Container image (string or object) | -- (required) |
-| `image.repository` | Image repository | -- |
+| `image.repository` | Prefix before the image name | -- |
+| `image.name` | Image name | workload name |
 | `image.tag` | Image tag | -- |
 | `image.pullPolicy` | `Always`, `IfNotPresent`, `Never` | `IfNotPresent` |
 | `imagePullSecrets` | List of pull secret references | `[]` |
@@ -641,15 +642,29 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 ```
 
-Enabling autoscaling creates a HorizontalPodAutoscaler (HPA) that adjusts your replica count based on resource utilization.
+Autoscaling is disabled by default. With `autoscaling.enabled: false`, Deployment and StatefulSet render `spec.replicas` from `workload.replicas`, preserving an explicit `0` and falling back to `1` when unset. No HPA is created, and `mode` is ignored.
 
-When you enable autoscaling, `workload.replicas` is ignored. The HPA manages replica count between `minReplicas` and `maxReplicas`.
+With `autoscaling.enabled: true`, both workload types omit `spec.replicas`. The optional `mode` defaults to `hpa`, which creates Summon's existing HorizontalPodAutoscaler (HPA). Its parameters are unchanged: a nonzero `workload.replicas` takes precedence over `minReplicas` as the HPA minimum; otherwise `minReplicas` is used.
+
+Set `mode: external` to delegate scaling to a controller configured separately:
+
+```yaml
+workload:
+  type: deployment
+
+autoscaling:
+  enabled: true
+  mode: external
+```
+
+External mode creates no HPA or other autoscaler resources. When autoscaling is enabled, any mode other than `hpa` or `external` fails rendering with an error.
 
 ### Autoscaling Fields Reference
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `autoscaling.enabled` | Create an HPA | `false` |
+| `autoscaling.enabled` | Omit workload replicas and delegate scaling | `false` |
+| `autoscaling.mode` | `hpa` or `external`; ignored when disabled | `hpa` |
 | `autoscaling.minReplicas` | Minimum replica count | -- |
 | `autoscaling.maxReplicas` | Maximum replica count | -- |
 | `autoscaling.targetCPUUtilizationPercentage` | CPU target (percent of request) | -- |
@@ -806,21 +821,9 @@ Setting `serviceAccount.enabled: true` creates a ServiceAccount and binds it to 
 
 ## PodDisruptionBudget
 
-```yaml
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 2
-```
-
-A PodDisruptionBudget (PDB) limits how many pods can be taken down during voluntary disruptions like node drains or cluster upgrades. You set either `minAvailable` (minimum pods that must remain running) or `maxUnavailable` (maximum pods that can be unavailable), but not both.
-
-### PDB Fields Reference
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| `podDisruptionBudget.enabled` | Create a PDB | `false` |
-| `podDisruptionBudget.minAvailable` | Min pods that must stay running | -- |
-| `podDisruptionBudget.maxUnavailable` | Max pods that can be down | -- |
+The current Summon renderer ignores the top-level `podDisruptionBudget` block.
+The example with `enabled: true` renders a ServiceAccount, a Service and a
+Deployment. [Example values](../../charts/summon/examples/test-feature-must-exist.yaml)
 
 ## Labels
 
@@ -856,12 +859,12 @@ Summon supports two structured label systems. `finops` labels enable cost tracki
 
 ### Example 1: API Service
 
-A production REST API with autoscaling, health checks, environment configuration, and disruption budget.
+A production REST API with autoscaling, health checks, and environment configuration.
 
 ```yaml
 name: payment-api
 namespace: applications
-image: myorg/payment-api:v3.2.1
+image: {name: myorg/payment-api, tag: "v3.2.1"}
 
 workload:
   type: deployment
@@ -934,10 +937,6 @@ autoscaling:
     scaleUp:
       stabilizationWindowSeconds: 60
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 2
-
 serviceAccount:
   enabled: true
   annotations:
@@ -954,7 +953,7 @@ labels:
     environment: production
 ```
 
-This spell generates: Deployment (3 replicas), Service (ClusterIP:80 -> 8080), HPA (3-15 replicas), PDB (minAvailable: 2), ServiceAccount with AWS IRSA.
+The spell renders a Deployment, a Service forwarding port 80 to 8080, an HPA with a range of 3–15 replicas, and a ServiceAccount annotated with the IAM role ARN.
 
 ### Example 2: StatefulSet Database
 
@@ -963,7 +962,7 @@ A PostgreSQL cluster with persistent storage, exec probes, and secrets.
 ```yaml
 name: postgres
 namespace: databases
-image: postgres:14
+image: {name: postgres, tag: "14"}
 
 workload:
   type: statefulset
@@ -1038,12 +1037,9 @@ tolerations:
     value: database
     effect: NoSchedule
 
-podDisruptionBudget:
-  enabled: true
-  maxUnavailable: 1
 ```
 
-This spell generates: StatefulSet (3 replicas), 2 PVCs per replica (data: 100Gi, wal: 20Gi), Service (ClusterIP:5432), PDB (maxUnavailable: 1).
+The StatefulSet requests three replicas and two claim templates per replica (100Gi for data and 20Gi for WAL). The Service exposes port 5432.
 
 ### Example 3: CronJob Backup
 
@@ -1052,7 +1048,7 @@ A nightly backup job that reads configuration from a YAML ConfigMap and writes t
 ```yaml
 name: nightly-db-backup
 namespace: batch
-image: myorg/db-backup:v2.0
+image: {name: myorg/db-backup, tag: "v2.0"}
 
 workload:
   type: cronjob
@@ -1075,6 +1071,7 @@ resources:
 
 configMaps:
   backup-config:
+    location: create
     contentType: yaml
     mountPath: /etc/backup
     name: config.yaml
@@ -1121,7 +1118,7 @@ labels:
     environment: production
 ```
 
-This spell generates: CronJob (runs at 02:00 daily), ConfigMap (YAML config mounted at /etc/backup/config.yaml), ServiceAccount with S3 write access.
+The CronJob runs at 02:00 daily, mounts the ConfigMap at `/etc/backup/config.yaml`, and uses the ServiceAccount annotated with the backup writer role ARN.
 
 ### Example 4: Application with Init Container
 
@@ -1130,21 +1127,21 @@ A web application that runs database migrations before starting, with a sidecar 
 ```yaml
 name: web-app
 namespace: applications
-image: myorg/web-app:v4.1.0
+image: {name: myorg/web-app, tag: "v4.1.0"}
 
 workload:
   type: deployment
   replicas: 2
 
 initContainers:
-  wait-for-db:
+  - name: wait-for-db
     image: busybox:1.36
     command:
       - sh
       - -c
       - "until nc -z postgres.databases.svc 5432; do echo 'waiting for db...'; sleep 2; done"
 
-  run-migrations:
+  - name: run-migrations
     image: myorg/web-app:v4.1.0
     command:
       - /app/migrate
@@ -1200,6 +1197,7 @@ envs:
 
 configMaps:
   app-settings:
+    location: create
     contentType: yaml
     mountPath: /etc/app
     name: settings.yaml
@@ -1225,12 +1223,9 @@ sideCars:
         cpu: 100m
         memory: 128Mi
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
 ```
 
-This spell generates: Deployment (2 replicas) with 2 init containers (wait-for-db, run-migrations), 1 sidecar (log-shipper), Service (ClusterIP:80 -> 3000), ConfigMap (YAML), PDB (minAvailable: 1). The init containers run in order -- the database connectivity check completes before migrations start, and both finish before the main container launches.
+The Deployment requests two replicas. Its ordered init container list runs the database check before migrations. The pod also runs the log shipper and mounts its settings ConfigMap. The Service forwards port 80 to 3000.
 
 ## Cross-References
 

@@ -1,0 +1,63 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: application-images
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: image-updater-test
+    app.kubernetes.io/managed-by: Helm
+    spelbook: image-updater-test
+    chapter: production
+    spell: kaster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  applicationRefs:
+  - images:
+    - alias: api
+      imageName: registry.example.com/example/api:latest
+      manifestTargets:
+        helm:
+          spec: image
+    namePattern: api
+    writeBackConfig:
+      gitConfig:
+        writeBackTarget: helmvalues:/applications/api.yaml
+  - images:
+    - alias: web
+      imageName: registry.example.com/example/web:latest
+      manifestTargets:
+        helm:
+          name: image.repository
+          tag: image.tag
+    namePattern: web
+    writeBackConfig:
+      gitConfig:
+        writeBackTarget: helmvalues:/applications/web.yaml
+  commonUpdateSettings:
+    updateStrategy: digest
+  writeBackConfig:
+    gitConfig:
+      branch: main:image-updater-{{.SHA256}}
+      repository: ssh://git@git.example.com:2222/example/config.git
+    method: git

@@ -2,37 +2,49 @@
 
 **Runik Platform** is a Kubernetes deployment framework built on Helm and ArgoCD. It provides a platform abstraction layer where developers define what they want deployed in simple YAML (spells), while platform engineers encode infrastructure patterns in reusable templates (glyphs).
 
-A single spell like this:
-
-```yaml
-name: api-service
-image: myorg/api:v1.0
-vault:
-  db-creds:
-    path: secret/data/db
-istio:
-  route:
-    selector:
-      access: external
-```
-
-Generates an ArgoCD Application that deploys a Deployment, Service, VaultSecret, and VirtualService -- all from 8 lines of YAML.
+Librarian reads a book and generates an Argo CD Application for each spell. Summon renders the workload. A spell can also use glyphs to declare resources such as Vault secrets and Istio routes.
 
 ## Quick Start
 
-```yaml
-# bookrack/production/apps/api.yaml
-name: api-service
-image: myorg/api:v1.0
-service:
-  enabled: true
-```
+From an empty directory, initialize the content repository, install Librarian from GitHub at a published tag, and create the `apps` chapter.
 
 ```bash
-helm template librarian/ --set name=production
+git init
+git submodule add https://github.com/runik-platform/librarian.git librarian
+git -C librarian checkout --detach v1.2.7
+git add librarian
+mkdir -p bookrack/my-book/apps
 ```
 
-The Librarian reads the bookrack, generates an ArgoCD Application, and ArgoCD deploys a Deployment + Service via the summon chart.
+Save the index and spell at the paths shown. The index activates the `apps` chapter and selects the Summon revision.
+
+```yaml
+# bookrack/my-book/index.yaml
+name: my-book
+chapters: [apps]
+defaultTrinket:
+  repository: https://github.com/runik-platform/summon.git
+  path: .
+  revision: v1.2.7
+```
+
+```yaml
+# bookrack/my-book/apps/web.yaml
+name: web
+namespace: my-book
+image:
+  repository: docker.io/library
+  name: nginx
+  tag: stable-alpine
+```
+
+Use the book name as the Helm release when rendering from the repository root.
+
+```bash
+helm template my-book ./librarian --namespace argocd
+```
+
+Look for `Application/web` in the output. It points to Summon and targets the `my-book` namespace. Continue with [the local workload render](usage/bookrack.md#render-the-book-and-workload-locally) or [the Argo CD bootstrap](usage/bookrack.md#bootstrap-the-book-in-argo-cd).
 
 ## Documentation
 
@@ -66,7 +78,6 @@ GitHub repositories rather than the aggregate development checkout.
 | [design/summon-internals.md](design/summon-internals.md) | Template structure, workload switching, contentType system |
 | [design/kaster.md](design/kaster.md) | Glyph orchestrator, dispatch logic, Go template code |
 | [design/glyphs.md](design/glyphs.md) | Glyph anatomy, type system, submodule distribution |
-| [design/mongodb-glyph.md](design/mongodb-glyph.md) | Percona lifecycle, generic MongoDB operations, static credentials, and scheduled backups |
 | [design/trinkets.md](design/trinkets.md) | Registration, trigger mechanism, internal design |
 | [design/lexicon.md](design/lexicon.md) | Runic Indexer, selection algorithm, query format |
 | [design/merge-system.md](design/merge-system.md) | Cascading merge, appendix, localAppendix, defaultTrinket |

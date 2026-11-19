@@ -1,0 +1,274 @@
+{
+  "default": {
+    "apiVersion": "argoproj.io/v1alpha1",
+    "kind": "Application",
+    "metadata": {
+      "name": "operator",
+      "namespace": "argocd",
+      "finalizers": [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    },
+    "spec": {
+      "project": "kustomize-contract",
+      "sources": [
+        {
+          "repoURL": "https://git.example.com/platform/operator.git",
+          "path": "config/default",
+          "targetRevision": "upstream",
+          "helm": {
+            "valuesObject": null
+          }
+        },
+        {
+          "repoURL": "https://git.example.com/platform/kaster.git",
+          "path": ".",
+          "targetRevision": "upstream",
+          "helm": {
+            "valuesObject": {
+              "glyphs": {
+                "vault": {
+                  "operator": {
+                    "type": "prolicy"
+                  }
+                }
+              },
+              "spellbook": {
+                "chapters": [
+                  "apps"
+                ],
+                "defaultTrinket": {
+                  "path": ".",
+                  "repository": "https://git.example.com/platform/summon.git",
+                  "revision": "upstream"
+                },
+                "name": "kustomize-contract",
+                "trinkets": {
+                  "kaster": {
+                    "key": "glyphs",
+                    "path": ".",
+                    "repository": "https://git.example.com/platform/kaster.git",
+                    "revision": "upstream"
+                  }
+                }
+              },
+              "chapter": {
+                "name": "apps"
+              },
+              "lexicon": {}
+            }
+          }
+        },
+        {
+          "repoURL": "https://git.example.com/platform/sidecar.git",
+          "path": "deploy",
+          "targetRevision": "v2.0.0",
+          "helm": {
+            "valuesObject": {
+              "spellbook": {
+                "chapters": [
+                  "apps"
+                ],
+                "defaultTrinket": {
+                  "path": ".",
+                  "repository": "https://git.example.com/platform/summon.git",
+                  "revision": "upstream"
+                },
+                "name": "kustomize-contract",
+                "trinkets": {
+                  "kaster": {
+                    "key": "glyphs",
+                    "path": ".",
+                    "repository": "https://git.example.com/platform/kaster.git",
+                    "revision": "upstream"
+                  }
+                }
+              },
+              "chapter": {
+                "name": "apps"
+              },
+              "lexicon": {}
+            }
+          }
+        },
+        {
+          "repoURL": "https://charts.example.com",
+          "chart": "database",
+          "targetRevision": "3.0.0",
+          "helm": {
+            "valuesObject": {
+              "replicas": 1,
+              "spellbook": {
+                "chapters": [
+                  "apps"
+                ],
+                "defaultTrinket": {
+                  "path": ".",
+                  "repository": "https://git.example.com/platform/summon.git",
+                  "revision": "upstream"
+                },
+                "name": "kustomize-contract",
+                "trinkets": {
+                  "kaster": {
+                    "key": "glyphs",
+                    "path": ".",
+                    "repository": "https://git.example.com/platform/kaster.git",
+                    "revision": "upstream"
+                  }
+                }
+              },
+              "chapter": {
+                "name": "apps"
+              },
+              "lexicon": {}
+            }
+          }
+        }
+      ],
+      "destination": {
+        "server": "https://kubernetes.default.svc",
+        "namespace": "operator"
+      },
+      "syncPolicy": {
+        "automated": {
+          "prune": true,
+          "selfHeal": true
+        },
+        "syncOptions": [
+          "CreateNamespace=true",
+          "PrunePropagationPolicy=foreground",
+          "PruneLast=true"
+        ],
+        "retry": {
+          "backoff": {
+            "duration": "5s",
+            "factor": 2,
+            "maxDuration": "3m"
+          },
+          "limit": 2
+        }
+      }
+    }
+  },
+  "noHelm": {
+    "apiVersion": "argoproj.io/v1alpha1",
+    "kind": "Application",
+    "metadata": {
+      "name": "operator",
+      "namespace": "argocd",
+      "finalizers": [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    },
+    "spec": {
+      "project": "kustomize-contract",
+      "sources": [
+        {
+          "repoURL": "https://git.example.com/platform/operator.git",
+          "path": "config/default",
+          "targetRevision": "upstream"
+        },
+        {
+          "repoURL": "https://git.example.com/platform/kaster.git",
+          "path": ".",
+          "targetRevision": "upstream",
+          "helm": {
+            "valuesObject": {
+              "glyphs": {
+                "vault": {
+                  "operator": {
+                    "type": "prolicy"
+                  }
+                }
+              },
+              "spellbook": {
+                "chapters": [
+                  "apps"
+                ],
+                "defaultTrinket": {
+                  "path": ".",
+                  "repository": "https://git.example.com/platform/summon.git",
+                  "revision": "upstream"
+                },
+                "name": "kustomize-contract",
+                "trinkets": {
+                  "kaster": {
+                    "key": "glyphs",
+                    "path": ".",
+                    "repository": "https://git.example.com/platform/kaster.git",
+                    "revision": "upstream"
+                  }
+                }
+              },
+              "chapter": {
+                "name": "apps"
+              },
+              "lexicon": {}
+            }
+          }
+        },
+        {
+          "repoURL": "https://git.example.com/platform/sidecar.git",
+          "path": "deploy",
+          "targetRevision": "v2.0.0"
+        },
+        {
+          "repoURL": "https://charts.example.com",
+          "chart": "database",
+          "targetRevision": "3.0.0",
+          "helm": {
+            "valuesObject": {
+              "replicas": 1,
+              "spellbook": {
+                "chapters": [
+                  "apps"
+                ],
+                "defaultTrinket": {
+                  "path": ".",
+                  "repository": "https://git.example.com/platform/summon.git",
+                  "revision": "upstream"
+                },
+                "name": "kustomize-contract",
+                "trinkets": {
+                  "kaster": {
+                    "key": "glyphs",
+                    "path": ".",
+                    "repository": "https://git.example.com/platform/kaster.git",
+                    "revision": "upstream"
+                  }
+                }
+              },
+              "chapter": {
+                "name": "apps"
+              },
+              "lexicon": {}
+            }
+          }
+        }
+      ],
+      "destination": {
+        "server": "https://kubernetes.default.svc",
+        "namespace": "operator"
+      },
+      "syncPolicy": {
+        "automated": {
+          "prune": true,
+          "selfHeal": true
+        },
+        "syncOptions": [
+          "CreateNamespace=true",
+          "PrunePropagationPolicy=foreground",
+          "PruneLast=true"
+        ],
+        "retry": {
+          "backoff": {
+            "duration": "5s",
+            "factor": 2,
+            "maxDuration": "3m"
+          },
+          "limit": 2
+        }
+      }
+    }
+  }
+}

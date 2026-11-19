@@ -1,0 +1,41 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: hyperspike.io/v1
+kind: Gitea
+metadata:
+  name: forgejo
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: forgejo-glyph-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: intro
+    spell: forgejo-glyph-test
+spec:
+  connection:
+    adminTokenSecretRef:
+      key: token
+      name: forgejo-operator-admin
+    service:
+      name: forgejo
+      namespace: forgejo
+      port: 3000
+  managementPolicy: External

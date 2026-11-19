@@ -1,0 +1,35 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: authentication.concierge.pinniped.dev/v1alpha1
+kind: JWTAuthenticator
+metadata:
+  name: workload-issuer
+spec:
+
+  audience: kubernetes
+  claimValidationRules:
+  - claim: tenant
+    requiredValue: production
+  claims:
+    groups: groups
+    username: preferred_username
+  issuer: https://issuer.example.com
+  userValidationRules:
+  - expression: '!user.username.startsWith(''system:'')'
+    message: usernames must not use the system prefix

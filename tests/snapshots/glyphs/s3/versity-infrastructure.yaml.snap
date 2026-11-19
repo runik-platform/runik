@@ -195,6 +195,11 @@ rules:
   - apiGroups: ["argoproj.io"]
     resources: ["workflows"]
     verbs: ["create", "get", "list"]
+  # The Argo Workflow trigger resolves workflowTemplateRef before creating the
+  # Workflow, so the Sensor also needs read access to the referenced template.
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtemplates"]
+    verbs: ["get"]
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -217,6 +222,12 @@ rules:
     verbs:
     - get
     - list
+
+  # Argo's executor reports container results through WorkflowTaskResult CRs.
+  # Keep this on the workflow pod role; the legacy Pod mode does not need it.
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtaskresults"]
+    verbs: ["create", "patch"]
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: rbac.authorization.k8s.io/v1

@@ -1,0 +1,12 @@
+name: kustomize-contract
+chapters: [apps]
+defaultTrinket:
+  repository: https://git.example.com/platform/summon.git
+  path: .
+  revision: upstream
+trinkets:
+  kaster:
+    key: glyphs
+    repository: https://git.example.com/platform/kaster.git
+    path: .
+    revision: upstream

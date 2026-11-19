@@ -1,0 +1,1758 @@
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-only-alerts
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+    grafana_alert: "1"
+data:
+  postgresql-0636454784489f22.yaml: |
+    apiVersion: 1
+    deleteRules:
+    - orgId: 1
+      uid: p063645478448-metrics-missing
+    - orgId: 1
+      uid: p063645478448-instances-missing
+    - orgId: 1
+      uid: p063645478448-primary-down
+    - orgId: 1
+      uid: p063645478448-slot-warning
+    - orgId: 1
+      uid: p063645478448-slot-critical
+    - orgId: 1
+      uid: p063645478448-slot-unlimited
+    - orgId: 1
+      uid: p063645478448-slot-budget
+    - orgId: 1
+      uid: p063645478448-disk-warning
+    - orgId: 1
+      uid: p063645478448-disk-critical
+    - orgId: 1
+      uid: p063645478448-disk-metrics
+    - orgId: 1
+      uid: p063645478448-connections
+    - orgId: 1
+      uid: p063645478448-collector-error
+    - orgId: 1
+      uid: p063645478448-streaming
+    - orgId: 1
+      uid: p063645478448-replication-lag
+    - orgId: 1
+      uid: p063645478448-archive-stalled
+    - orgId: 1
+      uid: p063645478448-archive-errors
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitored-dashboard
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "PostgreSQL"
+data:
+  postgresql-f24ed5a42833d6ee.json: |
+    {
+      "description": "Standard CNPG and kubelet metrics. Missing volume data is reported by PostgreSQLVolumeMetricsMissing; it is not treated as free disk space.",
+      "editable": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(cnpg_collector_up{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\"})",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "PostgreSQL instances up",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "max(cnpg_pg_replication_streaming_replicas{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"})",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Streaming replicas",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"}",
+              "legendFormat": "{{pod}} / {{slot_name}}",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL retained by replication slots",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_collector_pg_wal{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",value=\"size\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL directory size",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_pg_settings_setting{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\",name=\"max_slot_wal_keep_size\"} * 1048576",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Slot WAL limit (negative = unlimited)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_pg_replication_lag{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"replica\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Replication lag",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "1 - kubelet_volume_stats_available_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"monitored-[0-9]+(-wal)?\"} / kubelet_volume_stats_capacity_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"monitored-[0-9]+(-wal)?\"}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "refId": "A"
+            }
+          ],
+          "title": "PVC space used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kubelet_volume_stats_available_bytes{namespace=\"glyphs-release\",persistentvolumeclaim=~\"monitored-[0-9]+(-wal)?\"}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "refId": "A"
+            }
+          ],
+          "title": "PVC space available",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_pg_stat_archiver_seconds_since_last_archival{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"}",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Seconds since successful WAL archive",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 32
+          },
+          "id": 10,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "increase(cnpg_pg_stat_archiver_failed_count{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"}[15m])",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "WAL archive failures in 15 minutes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 40
+          },
+          "id": 11,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (namespace,pod,cnpg_cluster) (cnpg_backends_total{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\"}) / on(namespace,pod,cnpg_cluster) max by (namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",name=\"max_connections\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Connection utilization",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 40
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_pg_database_size_bytes{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"}",
+              "legendFormat": "{{datname}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Database sizes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 48
+          },
+          "id": 13,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (datname) (rate(cnpg_pg_stat_database_xact_commit{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\",role=\"primary\"}[5m]))",
+              "legendFormat": "{{datname}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Transactions per second",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 48
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "cnpg_collector_last_collection_error{namespace=\"glyphs-release\",cnpg_cluster=\"monitored\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Exporter collection errors",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "1m",
+      "schemaVersion": 39,
+      "tags": [
+        "postgresql",
+        "cloudnative-pg",
+        "runik"
+      ],
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "title": "PostgreSQL / glyphs-release / monitored",
+      "uid": "pg-f24ed5a42833d6ee",
+      "version": 1
+    }
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitored-alerts
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+    grafana_alert: "1"
+data:
+  postgresql-f24ed5a42833d6ee.yaml: |
+    apiVersion: 1
+    deleteRules: []
+    groups:
+    - folder: PostgreSQL
+      interval: 1m
+      name: postgresql-f24ed5a42833d6ee
+      orgId: 1
+      rules:
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "1"
+          summary: No PostgreSQL metrics for five minutes; check discovery, scrape and
+            exporter.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: absent_over_time(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="monitored"}[5m])
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLMetricsMissing / glyphs-release / monitored
+        uid: pf24ed5a42833-metrics-missing
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "1"
+          summary: Fewer healthy PostgreSQL instances than configured; inspect replication
+            before WAL accumulates.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: clamp_min(3 - (sum(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="monitored"})
+              or vector(0)), 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLInstancesUnavailable / glyphs-release / monitored
+        uid: pf24ed5a42833-instances-missing
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "1"
+          summary: No healthy PostgreSQL primary is being monitored.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: clamp_min(1 - (sum(cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"})
+              or vector(0)), 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLPrimaryUnavailable / glyphs-release / monitored
+        uid: pf24ed5a42833-primary-down
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "3"
+          summary: A replication slot is retaining a significant fraction of its WAL filesystem.
+            Check the replica and remaining disk space.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"}
+              / on(namespace,pod) group_left() (max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(monitored-[0-9]+)-wal"},
+              "pod", "$1", "persistentvolumeclaim", "(monitored-[0-9]+)-wal")) or on(namespace,pod)
+              max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(monitored-[0-9]+)"},
+              "pod", "$1", "persistentvolumeclaim", "(monitored-[0-9]+)")))
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.05
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotRetainedWALHigh / glyphs-release / monitored
+        uid: pf24ed5a42833-slot-warning
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "3"
+          summary: Replication slot WAL retention threatens primary and standby storage;
+            repair or rebuild the lagging replica.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"}
+              / on(namespace,pod) group_left() (max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(monitored-[0-9]+)-wal"},
+              "pod", "$1", "persistentvolumeclaim", "(monitored-[0-9]+)-wal")) or on(namespace,pod)
+              max by(namespace,pod) (label_replace(kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"(monitored-[0-9]+)"},
+              "pod", "$1", "persistentvolumeclaim", "(monitored-[0-9]+)")))
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.2
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLSlotRetainedWALCritical / glyphs-release / monitored
+        uid: pf24ed5a42833-slot-critical
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "3"
+          summary: An unlimited slot is retaining more than max_wal_size. Restore replication
+            or set a retention budget before storage fills.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: (cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"}
+              > on(namespace,pod,cnpg_cluster) group_left() (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="monitored",role="primary",name="max_wal_size"}
+              * 1048576)) and on(namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="monitored",role="primary",name="max_slot_wal_keep_size"}
+              < 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotWALRetentionUnbounded / glyphs-release / monitored
+        uid: pf24ed5a42833-slot-unlimited
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "3"
+          summary: A slot has used over 75% of its configured WAL retention budget; catch
+            up before WAL becomes unavailable.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_slots_pg_wal_lsn_diff{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"}
+              / on(namespace,pod,cnpg_cluster) group_left() ((cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="monitored",role="primary",name="max_slot_wal_keep_size"}
+              > 0) * 1048576)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.75
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLSlotWALBudgetLow / glyphs-release / monitored
+        uid: pf24ed5a42833-slot-budget
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "7"
+          summary: PostgreSQL PVC free space is low. Inspect WAL retention, archiving
+            and volume growth.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: 1 - kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}
+              / kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.8
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLDiskAlmostFull / glyphs-release / monitored
+        uid: pf24ed5a42833-disk-warning
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "7"
+          summary: PostgreSQL PVC is critically full; act before PostgreSQL stops and
+            failover candidates run out of space.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: 1 - kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}
+              / kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.9
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLDiskCritical / glyphs-release / monitored
+        uid: pf24ed5a42833-disk-critical
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "7"
+          summary: PostgreSQL is up but its PVC metrics are missing. Disk alerts cannot
+            evaluate; check kubelet volume metrics.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_collector_up{namespace="glyphs-release",cnpg_cluster="monitored"}
+              unless on(namespace,pod) label_replace((kubelet_volume_stats_capacity_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}
+              and on(namespace,persistentvolumeclaim) kubelet_volume_stats_available_bytes{namespace="glyphs-release",persistentvolumeclaim=~"monitored-[0-9]+(-wal)?"}),
+              "pod", "$1", "persistentvolumeclaim", "(monitored-[0-9]+)(-wal)?")
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 10m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLVolumeMetricsMissing / glyphs-release / monitored
+        uid: pf24ed5a42833-disk-metrics
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "11"
+          summary: PostgreSQL connection usage is approaching max_connections.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: sum by (namespace,pod,cnpg_cluster) (cnpg_backends_total{namespace="glyphs-release",cnpg_cluster="monitored"})
+              / on(namespace,pod,cnpg_cluster) max by (namespace,pod,cnpg_cluster) (cnpg_pg_settings_setting{namespace="glyphs-release",cnpg_cluster="monitored",name="max_connections"})
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0.8
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLConnectionsHigh / glyphs-release / monitored
+        uid: pf24ed5a42833-connections
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "14"
+          summary: CNPG cannot collect one or more PostgreSQL metrics; inspect exporter
+            errors.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_collector_last_collection_error{namespace="glyphs-release",cnpg_cluster="monitored"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLMetricsCollectionFailed / glyphs-release / monitored
+        uid: pf24ed5a42833-collector-error
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "1"
+          summary: A configured standby is not streaming. Inspect its WAL receiver and
+            replication slot.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: clamp_min(2 - (max(cnpg_pg_replication_streaming_replicas{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"})
+              or vector(0)), 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLStreamingReplicasMissing / glyphs-release / monitored
+        uid: pf24ed5a42833-streaming
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "6"
+          summary: A standby is behind the primary; inspect connectivity, replay and retained
+            WAL.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_pg_replication_lag{namespace="glyphs-release",cnpg_cluster="monitored",role="replica"}
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 120
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLReplicationLagHigh / glyphs-release / monitored
+        uid: pf24ed5a42833-replication-lag
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "9"
+          summary: No successful WAL archive within the expected window. Inspect Barman
+            and S3 before local WAL fills the volume.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: (time() - cnpg_pg_stat_archiver_last_archived_time{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"})
+              and on(namespace,pod,cnpg_cluster) (cnpg_collector_pg_wal_archive_status{namespace="glyphs-release",cnpg_cluster="monitored",role="primary",value="ready"}
+              > 0)
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 900
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 5m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: critical
+        noDataState: OK
+        title: PostgreSQLWALArchivingStalled / glyphs-release / monitored
+        uid: pf24ed5a42833-archive-stalled
+      - annotations:
+          __dashboardUid__: pg-f24ed5a42833d6ee
+          __panelId__: "9"
+          summary: WAL archiving failed in the last 15 minutes; inspect Barman, S3 and
+            their dependencies.
+        condition: C
+        data:
+        - datasourceUid: prometheus
+          model:
+            editorMode: code
+            expr: cnpg_pg_stat_archiver_last_failed_time{namespace="glyphs-release",cnpg_cluster="monitored",role="primary"}
+              > time() - 900
+            instant: true
+            intervalMs: 60000
+            maxDataPoints: 43200
+            range: false
+            refId: A
+          refId: A
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+          refId: B
+          relativeTimeRange:
+            from: 900
+            to: 0
+        - datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+            expression: B
+            refId: C
+            type: threshold
+          refId: C
+          relativeTimeRange:
+            from: 900
+            to: 0
+        execErrState: Alerting
+        for: 2m
+        isPaused: false
+        labels:
+          cnpg_cluster: monitored
+          component: postgresql
+          namespace: glyphs-release
+          severity: warning
+        noDataState: OK
+        title: PostgreSQLWALArchivingFailed / glyphs-release / monitored
+        uid: pf24ed5a42833-archive-errors
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unmonitored-alerts
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+    grafana_alert: "1"
+data:
+  postgresql-06db5664bb47b151.yaml: |
+    apiVersion: 1
+    deleteRules:
+    - orgId: 1
+      uid: p06db5664bb47-metrics-missing
+    - orgId: 1
+      uid: p06db5664bb47-instances-missing
+    - orgId: 1
+      uid: p06db5664bb47-primary-down
+    - orgId: 1
+      uid: p06db5664bb47-slot-warning
+    - orgId: 1
+      uid: p06db5664bb47-slot-critical
+    - orgId: 1
+      uid: p06db5664bb47-slot-unlimited
+    - orgId: 1
+      uid: p06db5664bb47-slot-budget
+    - orgId: 1
+      uid: p06db5664bb47-disk-warning
+    - orgId: 1
+      uid: p06db5664bb47-disk-critical
+    - orgId: 1
+      uid: p06db5664bb47-disk-metrics
+    - orgId: 1
+      uid: p06db5664bb47-connections
+    - orgId: 1
+      uid: p06db5664bb47-collector-error
+    - orgId: 1
+      uid: p06db5664bb47-streaming
+    - orgId: 1
+      uid: p06db5664bb47-replication-lag
+    - orgId: 1
+      uid: p06db5664bb47-archive-stalled
+    - orgId: 1
+      uid: p06db5664bb47-archive-errors
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: metrics-only
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+spec:
+  description: PostgreSQL cluster for metrics-only
+  inheritedMetadata:
+    annotations:
+      prometheus.io/path: /metrics
+      prometheus.io/port: "9187"
+      prometheus.io/scrape: "true"
+
+  instances: 1
+
+  enableSuperuserAccess: true
+
+  storage:
+    size: 1Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: monitored
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+spec:
+  description: PostgreSQL cluster for monitored
+  inheritedMetadata:
+    annotations:
+      example.com/owner: database-team
+      prometheus.io/path: /metrics
+      prometheus.io/port: "9187"
+      prometheus.io/scrape: "true"
+    labels:
+      team: platform
+  monitoring:
+    metricsQueriesTTL: 30
+
+  instances: 3
+
+  enableSuperuserAccess: true
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: false
+      parameters:
+        barmanObjectName: monitored
+
+  storage:
+    size: 1Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: unmonitored
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+spec:
+  description: PostgreSQL cluster for unmonitored
+
+  instances: 1
+
+  enableSuperuserAccess: true
+
+  storage:
+    size: 1Gi
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: monitored
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+spec:
+  configuration:
+    destinationPath: "s3://test-book-databases-monitored-backup/monitored"
+    endpointURL: "https://s3.example.com"
+    s3Credentials:
+      accessKeyId:
+        name: external-backup
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: external-backup
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: "90d"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: monitored-daily
+  labels:
+    app.kubernetes.io/name: postgres-observability
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: databases
+    spell: postgres-observability
+spec:
+  schedule: "0 0 3 * * *"
+  cluster:
+    name: monitored
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  backupOwnerReference: self

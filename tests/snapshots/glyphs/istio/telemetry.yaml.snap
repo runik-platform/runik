@@ -1,0 +1,142 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "all-internal-013c6a867b"
+  namespace: "internal-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - filter:
+      expression: response.code >= 500
+    providers:
+    - name: envoy
+  selector:
+    matchLabels:
+      istio: internal
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "all-internal-45a13df2bc"
+  namespace: "remote-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - filter:
+      expression: response.code >= 500
+    providers:
+    - name: envoy
+  selector:
+    matchLabels:
+      istio: netbird
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "application"
+  namespace: "apps"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  metrics:
+  - overrides:
+    - match:
+        metric: REQUEST_COUNT
+      tagOverrides:
+        response_code:
+          operation: REMOVE
+    providers:
+    - name: prometheus
+  selector:
+    matchLabels:
+      app: backend
+  tracing:
+  - providers:
+    - name: otel
+    randomSamplingPercentage: 25
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "default-gateway"
+  namespace: "internal-ingress"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      istio: internal
+  tracing:
+  - providers:
+    - name: otel
+    randomSamplingPercentage: 10
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "namespace-defaults"
+  namespace: "apps"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - disabled: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: "waypoint"
+  namespace: "apps"
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example
+    app.kubernetes.io/managed-by: Helm
+spec:
+  accessLogging:
+  - providers:
+    - name: envoy
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: backend

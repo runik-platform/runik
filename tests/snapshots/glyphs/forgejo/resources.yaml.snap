@@ -1,0 +1,81 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: hyperspike.io/v1
+kind: Org
+metadata:
+  name: platform
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: forgejo-resources-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: forgejo-resources-test
+spec:
+  description: Platform repositories
+  instance:
+    name: forgejo
+    namespace: forgejo
+  visibility: private
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: hyperspike.io/v1
+kind: Repo
+metadata:
+  name: runik
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: forgejo-resources-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: forgejo-resources-test
+spec:
+  description: Runik
+  org:
+    name: platform
+    namespace: forgejo
+  private: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: hyperspike.io/v1
+kind: User
+metadata:
+  name: automation
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: forgejo-resources-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: apps
+    spell: forgejo-resources-test
+spec:
+  email: automation@example.test
+  instance:
+    name: forgejo
+    namespace: forgejo
+  password:
+    key: password
+    name: automation-password

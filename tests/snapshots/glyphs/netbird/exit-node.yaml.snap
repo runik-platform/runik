@@ -40,11 +40,11 @@ spec:
   sourcePostureCheckRefs:
     - "managed-device"
   rules:
-    - name: icmp
+    - name: routed-traffic
       enabled: true
       action: accept
       bidirectional: false
-      protocol: icmp
+      protocol: all
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: netbird.io/v1alpha1
@@ -68,7 +68,7 @@ spec:
   groupRefs:
     - "roaming-clients"
   accessControlGroupRefs:
-    - "roaming-clients"
+    - "exit-routers"
   enabled: true
   masquerade: true
   metric: 100

@@ -1,6 +1,6 @@
-# CLAUDE.md — Runik
+# AGENTS.md — Runik
 
-This is the root guide for working in the runik repository. Per-chart deep dives live in each chart's own `CLAUDE.md`; this file is the index and the place where cross-cutting concepts are defined once.
+This is the root guide for working in the runik repository. Per-chart deep dives live in each chart's own `AGENTS.md`; this file is the index and the place where cross-cutting concepts are defined once.
 
 > If a term looks unfamiliar, check [docs/vocabulary.md](docs/vocabulary.md) first.
 
@@ -19,17 +19,24 @@ All terms are defined in [docs/vocabulary.md](docs/vocabulary.md). Terms you wil
 | Path | What it is | Deep-dive |
 |------|------------|-----------|
 | `bookrack/` | User-authored spells | [docs/usage/bookrack.md](docs/usage/bookrack.md) |
-| `librarian/` | Spell → ArgoCD Application orchestrator | `librarian/CLAUDE.md` |
-| `charts/summon/` | Default trinket: workloads + internal glyph dispatch | `charts/summon/CLAUDE.md` |
-| `charts/kaster/` | Top-level dispatcher for `glyphs:` | `charts/kaster/CLAUDE.md` |
-| `charts/glyphs/` | Infrastructure subcharts (one per type) | [docs/design/glyphs.md](docs/design/glyphs.md) |
-| `charts/trinkets/tarot/` | Workflow composition trinket | `charts/trinkets/tarot/CLAUDE.md` |
-| `charts/trinkets/microspell/` | Opinionated microservice trinket | `charts/trinkets/microspell/CLAUDE.md` |
-| `covenant/` | IAM system (Keycloak + Vault) | `covenant/CLAUDE.md` |
+| `librarian/` | Spell → ArgoCD Application orchestrator | `librarian/AGENTS.md` |
+| `charts/summon/` | Default trinket: workloads + internal glyph dispatch | `charts/summon/AGENTS.md` |
+| `charts/kaster/` | Top-level dispatcher for `glyphs:` | `charts/kaster/AGENTS.md` |
+| `charts/glyphs/` | Infrastructure subcharts (one per type) | [docs/design/creating-glyphs.md](docs/design/creating-glyphs.md) |
+| `charts/trinkets/tarot/` | Workflow composition trinket | `charts/trinkets/tarot/AGENTS.md` |
+| `charts/trinkets/microspell/` | Opinionated microservice trinket | `charts/trinkets/microspell/AGENTS.md` |
+| `covenant/` | IAM system (Keycloak + Vault) | `covenant/AGENTS.md` |
 
 ### Submodule rule
 
-`charts/glyphs` is the **canonical** copy of the glyphs repository. Five mirror worktrees check out the same `glyphs.git` at different paths: `charts/kaster/charts`, `charts/summon/charts`, `charts/trinkets/microspell/charts`, `charts/trinkets/tarot/charts`, and `covenant/charts`. Always edit the canonical path and merge its PR into `glyphs/upstream`. The operational Tarot release reading then validates and propagates that exact commit through every consumer and finally this aggregate repository. Never edit a mirror worktree directly; the manual cascade in `docs/design/creating-glyphs.md` is recovery procedure only.
+`charts/glyphs` is the **canonical** copy of the glyphs repository. Five mirror worktrees check out the same `glyphs.git` at different paths: `charts/kaster/charts`, `charts/summon/charts`, `charts/trinkets/microspell/charts`, `charts/trinkets/tarot/charts`, and `covenant/charts`. Always edit the canonical path and merge its PR into `glyphs/upstream`. The repository-owned Glyphs synchronization Workflow then validates and propagates that exact commit through every consumer and finally this aggregate repository. Never edit a mirror worktree directly; the manual cascade in `docs/design/creating-glyphs.md` is recovery procedure only.
+
+Glyphs is the one repository that intentionally has no root `AGENTS.md`. Its
+repository root is checked out verbatim as the consumers' `charts/` directory,
+where Helm interprets a top-level Markdown file as a packaged subchart. Keep
+agent guidance here and in `docs/design/creating-glyphs.md`; adding ordinary
+files or directories at the Glyphs root must first be validated in every
+consumer.
 
 ## 4. The Two Glyph-Dispatch Mechanisms
 
@@ -118,7 +125,7 @@ Match priority:
 Selector key lookup, per key:
 
 1. `entry.labels[key]`.
-2. `entry[key]` — top-level fallback. Certain glyphs make use of this to inject structural keys (for example a backend-type identifier) into their selector; see the relevant chart's `CLAUDE.md` for concrete examples.
+2. `entry[key]` — top-level fallback. Certain glyphs make use of this to inject structural keys (for example a backend-type identifier) into their selector; see the relevant chart's `AGENTS.md` for concrete examples.
 
 ### 6.5 Worked example
 
@@ -128,27 +135,81 @@ For the full walkthrough see [docs/usage/lexicon.md](docs/usage/lexicon.md).
 
 ## 7. Spell Author Quick-Start
 
+When starting a content repository, follow [Create a book in your own repository](docs/usage/bookrack.md#create-a-book-in-your-own-repository). Use that repository's Git workflow and render its book there. Runik's `make render book` target covers registered fixture books.
+
 | Goal | Shape of the spell | Where to learn the full options |
 |------|---------------------|---------------------------------|
-| Minimal workload | `image:` only | `charts/summon/CLAUDE.md` |
+| Minimal workload | `name` and an `image` map with `name` and `tag` | `charts/summon/AGENTS.md` |
 | Workload + inline infra | top-level subchart keys (`vault:`, `istio:`, ...) | [docs/usage/glyphs.md](docs/usage/glyphs.md) |
-| External chart + infra | `chart:` + `repository:` + `glyphs:` | `charts/kaster/CLAUDE.md` |
+| External chart + infra | `chart:` + `repository:` + `glyphs:` | `charts/kaster/AGENTS.md` |
 | Path-based source | `path:` | [docs/usage/spells.md](docs/usage/spells.md) |
 | Extra sources | `runes:` | [docs/usage/runes.md](docs/usage/runes.md) |
-| Workflow composition | `tarot:` | `charts/trinkets/tarot/CLAUDE.md` |
+| Workflow composition | `tarot:` | `charts/trinkets/tarot/AGENTS.md` |
 | Publish / read from lexicon | `appendix.lexicon` / `localAppendix.lexicon` | [docs/usage/lexicon.md](docs/usage/lexicon.md) |
 
 ## 8. Glyph Developer Quick-Start
 
-- Edit the canonical path (`charts/glyphs/`). After committing and pushing, bump the submodule reference in every consumer mirror.
-- A glyph is a subchart with the standard Helm layout (`Chart.yaml`, `templates/`, `values.yaml`).
+- Edit the canonical path (`charts/glyphs/`). After its reviewed PR is merged
+  into `glyphs/upstream`, its native Workflow validates and propagates that exact commit to
+  every consumer and then to Runik. Manual submodule bumps are recovery-only.
+- A glyph subchart contains `Chart.yaml`, `templates/`, and its test inputs in `examples/`. Put chart defaults in `values.yaml` when needed.
+- Before adding a glyph or type, read the closest existing glyph's template and example. Reuse its operations and the helpers in `charts/glyphs/common/templates/`.
+  For new glyph resource names, use `common.glyph.name` with named arguments `root`, `glyph` and optional `options`; compose resource affixes through `options.prefix` / `options.suffix` and glyph affixes through `namePrefix` / `nameSuffix`. Reuse the resolved name in every reference to that resource. Keep `common.name` for the existing workload identity and preserve existing names and selectors when adopting the new helper. Normalization is opt-in (`options.normalize`); use `common.name.normalize` for an already composed name only when the resource contract permits it. See [resource naming](docs/design/creating-glyphs.md#resource-names-with-common).
+  Use `common.all.labels` for resource metadata, `common.selectorLabels` for stable selectors, and `common.annotations.map` to merge root, resource and generated annotations.
 - Dispatch contract: the template named `<chart>.<type>` is invoked when a spell declares an entry with `type: <type>` under either the matching top-level key (summon-internal) or under `glyphs.<chart>` (top-level kaster). One template works in both modes.
 - Read the lexicon via `runicIndexer`; see §6.4.
-- Iterate with the `make` targets in §9.
+- Render a glyph example from the Runik root with `make render glyph <glyph> <file>` and compare it with its snapshot using `make test glyph <glyph> <file>` (see §10). For example, `postgresql/examples/db.yaml` in Glyphs maps to `tests/snapshots/glyphs/postgresql/db.yaml.snap` in Runik.
 
 Full guide: [docs/design/creating-glyphs.md](docs/design/creating-glyphs.md) and [docs/design/glyphs.md](docs/design/glyphs.md).
 
-## 9. Make Targets
+## 9. Forgejo-first development and publication
+
+Forgejo is the source of truth for Runik and every component. Start work from
+`origin/upstream`, push a topic branch to Forgejo, and merge a reviewed PR into
+`upstream`. Do not develop against or push directly to the generated
+`runik-platform` GitHub repositories.
+
+An `upstream` merge and a version release are separate operations:
+
+- A Librarian, Covenant, Summon, Kaster, Tarot, or Microspell merge triggers
+  its `.argo/synchronize.yaml`, which validates the aggregate and updates its
+  Runik gitlink through a CI-gated merge as `ci-bot`.
+- A Glyphs merge triggers the serialized Glyphs cascade through all direct
+  consumers and Runik. Do not update those gitlinks manually during normal
+  development.
+- Public publication begins only when a human publishes a Forgejo Release. A
+  raw tag push is not a publication request.
+
+Before releasing a chart component, merge an explicit `Chart.yaml` version
+change and use the exact tag `v<Chart.yaml.version>`. Glyphs and Runik have
+independent SemVer streams. Publish Glyphs first when it is part of a release
+set, publish component releases after their commits are pinned in Runik, and
+publish the Runik aggregate last.
+
+Repository-owned Workflows export only a clean `upstream` branch and immutable tags to GitHub.
+GitHub Actions create the GitHub Releases. Summon, Kaster, Tarot, and
+Microspell also publish self-contained OCI Helm charts to
+`ghcr.io/runik-platform`; Librarian, Covenant, Glyphs, and Runik are Git-only.
+
+Each repository owns its native lifecycle Workflows under `.argo/`. The
+operational contract is the release runbook in
+`the-yaml-life/bookrack/the-yaml-life/workflows/README.md`; update it alongside
+changes to those Workflows or their shared execution infrastructure.
+
+## 10. Make Targets
+
+Choose local checks by what the diff can affect. For prose edits, review the
+diff and any changed links or paths. If an example or command changes, check
+that example or command. For a renderer or fixture change, run the narrowest
+existing test that exercises the affected behavior. Expand coverage only when
+the impact spans more cases or the user requests it. Reuse a passing result
+while its inputs and renderer are unchanged.
+
+For every new or changed public behavior, extend the closest example exercised
+by the component's existing suite, or add a distinct case alongside it. For
+glyphs, these inputs live in `charts/glyphs/<glyph>/examples/`. Check that the
+rendered manifest shows the intended behavior, including affected references.
+Update a snapshot only when the expected output changes and the render has been reviewed.
 
 The root `Makefile` dispatches resource commands through shell `case` blocks.
 The complex integration test delegates once to a private render branch so its
@@ -168,12 +229,12 @@ make list     {glyphs | examples <name> | books}
 verification, direct kaster/trinket smoke renders, all golden snapshots, the
 self-contained realistic Librarian integration, and the direct Covenant IAM
 suite. See [tests/README.md](tests/README.md) for the coverage matrix,
-deterministic render contract, and Forgejo runner setup.
+deterministic render contract, and repository Workflow setup.
 
-## 10. Companion Docs
+## 11. Companion Docs
 
 - [docs/README.md](docs/README.md) — documentation index.
 - [docs/vocabulary.md](docs/vocabulary.md) — glossary referenced from this file.
 - [docs/usage/](docs/usage/) — spell-author documentation.
 - [docs/design/](docs/design/) — internals for framework contributors.
-- Each chart's `CLAUDE.md` — chart-specific deep dive.
+- Each chart's `AGENTS.md` — chart-specific deep dive.

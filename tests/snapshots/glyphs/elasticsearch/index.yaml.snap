@@ -44,6 +44,8 @@ spec:
   pluginName: elasticsearch-database-plugin
   allowedRoles:
     - search-app
+  # VCO 1 requires this field; plugins using databaseSpecificConfig keep it empty.
+  connectionURL: ""
   passwordAuthentication: "password"
   databaseSpecificConfig:
     url: http://shared-elastic-es-http.elastic-infra.svc:9200
@@ -187,6 +189,9 @@ spec:
     }
     path "sys/mounts/db/test-book/apps/search-app" {
       capabilities = ["create","read","update","delete"]
+    }
+    path "sys/mounts/db/test-book/apps/search-app/tune" {
+      capabilities = ["read","update"]
     }
 ---
 # Source: kaster/templates/kaster.yaml

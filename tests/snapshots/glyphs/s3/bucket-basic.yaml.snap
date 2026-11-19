@@ -19,7 +19,7 @@
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: RandomSecret
 metadata:
-  name: s3-identities-seaweedfs-my-data-aws-access-key-id
+  name: s3-identities-gateway-my-data-aws-access-key-id
   namespace: glyphs-release
   labels:
     app.kubernetes.io/name: my-app
@@ -31,7 +31,7 @@ metadata:
     spell: my-app
     runik.ing/identity-name: the-yaml-life-staging-my-data
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   authentication:
     path: the-yaml-life
@@ -52,7 +52,7 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: RandomSecret
 metadata:
-  name: s3-identities-seaweedfs-my-data-aws-secret-access-key
+  name: s3-identities-gateway-my-data-aws-secret-access-key
   namespace: glyphs-release
   labels:
     app.kubernetes.io/name: my-app
@@ -64,7 +64,7 @@ metadata:
     spell: my-app
     runik.ing/identity-name: the-yaml-life-staging-my-data
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   authentication:
     path: the-yaml-life
@@ -85,7 +85,7 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: VaultSecret
 metadata:
-  name: s3-identities-seaweedfs-my-data
+  name: s3-identities-gateway-my-data
   namespace: glyphs-release
   labels:
     app.kubernetes.io/name: my-app
@@ -97,14 +97,14 @@ metadata:
     spell: my-app
     runik.ing/identity-name: the-yaml-life-staging-my-data
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
 spec:
   refreshThreshold: 90
   refreshPeriod: 3m0s
   vaultSecretDefinitions:
     - name: aws-access-key-id
       requestType: GET
-      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-access-key-id
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-gateway-my-data-aws-access-key-id
       authentication:
         path: the-yaml-life
         role: my-app
@@ -116,7 +116,7 @@ spec:
           skipVerify: false
     - name: aws-secret-access-key
       requestType: GET
-      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-secret-access-key
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-gateway-my-data-aws-secret-access-key
       authentication:
         path: the-yaml-life
         role: my-app
@@ -138,10 +138,10 @@ spec:
       spell: my-app
       runik.ing/identity-name: the-yaml-life-staging-my-data
       runik.ing/s3-identity: "true"
-      runik.ing/s3-provider: seaweedfs
+      runik.ing/s3-provider: gateway
     stringData: #tiene q haber una forma de hacer q esto funcione con un range del lado del operator para q no hagan falta las keys
-        AWS_ENDPOINT: https://s3-weed.the.yaml.life
-        AWS_ENDPOINTS: https://s3-weed.the.yaml.life
+        AWS_ENDPOINT: https://s3.example.test
+        AWS_ENDPOINTS: https://s3.example.test
         AWS_REGION: us-east-1
         S3_BUCKET: the-yaml-life-staging-my-data
         AWS_ACCESS_KEY_ID: '{{ index . "aws-access-key-id" "AWS_ACCESS_KEY_ID" }}'
@@ -152,8 +152,8 @@ spec:
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: VaultSecret
 metadata:
-  name: s3-identities-seaweedfs-my-data
-  namespace: seaweedfs
+  name: s3-identities-gateway-my-data
+  namespace: s3
   labels:
     app.kubernetes.io/name: my-app
     app.kubernetes.io/instance: test
@@ -164,7 +164,7 @@ metadata:
     spell: my-app
     runik.ing/identity-name: the-yaml-life-staging-my-data
     runik.ing/s3-identity: "true"
-    runik.ing/s3-provider: seaweedfs
+    runik.ing/s3-provider: gateway
     runik.ing/source-namespace: glyphs-release
 spec:
   refreshThreshold: 90
@@ -172,24 +172,24 @@ spec:
   vaultSecretDefinitions:
     - name: aws-access-key-id
       requestType: GET
-      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-access-key-id
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-gateway-my-data-aws-access-key-id
       authentication:
         path: the-yaml-life
-        role: seaweedfs-s3-aggregator-pod
+        role: gateway-s3-aggregator-pod
         serviceAccount:
-          name: seaweedfs-s3-aggregator-pod
+          name: gateway-s3-aggregator-pod
       connection:
         address: http://vault.vault.svc:8200
         tLSConfig:
           skipVerify: false
     - name: aws-secret-access-key
       requestType: GET
-      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-seaweedfs-my-data-aws-secret-access-key
+      path: kv/data/the-yaml-life/staging/glyphs-release/publics/s3-identities-gateway-my-data-aws-secret-access-key
       authentication:
         path: the-yaml-life
-        role: seaweedfs-s3-aggregator-pod
+        role: gateway-s3-aggregator-pod
         serviceAccount:
-          name: seaweedfs-s3-aggregator-pod
+          name: gateway-s3-aggregator-pod
       connection:
         address: http://vault.vault.svc:8200
         tLSConfig:
@@ -206,7 +206,7 @@ spec:
       spell: my-app
       runik.ing/identity-name: the-yaml-life-staging-my-data
       runik.ing/s3-identity: "true"
-      runik.ing/s3-provider: seaweedfs
+      runik.ing/s3-provider: gateway
       runik.ing/source-namespace: glyphs-release
     stringData:
         BUCKETS: the-yaml-life-staging-my-data

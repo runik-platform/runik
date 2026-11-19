@@ -1,0 +1,76 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: hyperspike.io/v1
+kind: Gitea
+metadata:
+  name: forgejo-next
+  namespace: glyphs-release
+  labels:
+    app.kubernetes.io/name: forgejo-managed-test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: test-book
+    app.kubernetes.io/managed-by: Helm
+    spelbook: test-book
+    chapter: intro
+    spell: forgejo-managed-test
+spec:
+  connection:
+    adminTokenSecretRef:
+      key: token
+      name: forgejo-operator-admin
+  deletionPolicy: Retain
+  image: codeberg.org/forgejo/forgejo:16.0.2-rootless
+  ingress:
+    managed: false
+  managementPolicy: Managed
+  objectStorage:
+    endpoint: http://s3.s3.svc:7070
+    existing:
+      bucketSecretRef:
+        key: S3_BUCKET
+        name: forgejo-storage
+      credentialsSecretRef:
+        name: forgejo-storage
+      secure: false
+    region: us-east-1
+    type: s3
+  persistence:
+    config:
+      existingClaim: forgejo-config
+      mountPath: /var/lib/gitea
+    data:
+      existingClaim: forgejo-data
+      mountPath: /data
+  postgres:
+    existing:
+      credentialsSecretRef:
+        name: forgejo-pg
+      databaseSecretRef:
+        key: database
+        name: forgejo-pg
+      host: pg-infra-rw.pg-infra.svc
+      passwordKey: password
+      port: "5432"
+      sslMode: disable
+      usernameKey: username
+  rootless: true
+  workload:
+    bootstrapAdmin: false
+    name: forgejo-managed
+    replicas: 0

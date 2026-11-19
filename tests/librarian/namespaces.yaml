@@ -1,0 +1,47 @@
+index:
+  name: namespace-contract
+  chapters: [apps]
+  namePrefix: app-
+  nameSuffix: -test
+  argocdNamespace: argocd-control
+  defaultTrinket:
+    repository: https://git.example.com/platform/summon.git
+    path: .
+    revision: upstream
+
+sources:
+  - name: summon
+  - name: chart
+    repository: https://charts.example.com
+    chart: service
+    revision: 1.0.0
+  - name: path
+    repository: https://git.example.com/platform/service.git
+    path: chart
+    revision: upstream
+  - name: kustomize
+    repository: https://git.example.com/platform/service.git
+    path: manifests
+    revision: upstream
+    kustomize: {}
+
+# An empty map omits namespace; a null chapter omits index.yaml entirely.
+# A null expected destination means the original spell name.
+cases:
+  - {name: legacy, book: {}, chapter: {}, spell: {}, expected: null}
+  - {name: book, book: {namespace: book-ns}, chapter: {}, spell: {}, expected: book-ns}
+  - {name: chapter, book: {}, chapter: {namespace: chapter-ns}, spell: {}, expected: chapter-ns}
+  - {name: spell, book: {}, chapter: {}, spell: {namespace: spell-ns}, expected: spell-ns}
+  - {name: chapter-over-book, book: {namespace: book-ns}, chapter: {namespace: chapter-ns}, spell: {}, expected: chapter-ns}
+  - {name: spell-over-book, book: {namespace: book-ns}, chapter: {}, spell: {namespace: spell-ns}, expected: spell-ns}
+  - {name: spell-over-chapter, book: {}, chapter: {namespace: chapter-ns}, spell: {namespace: spell-ns}, expected: spell-ns}
+  - {name: all-scopes, book: {namespace: book-ns}, chapter: {namespace: chapter-ns}, spell: {namespace: spell-ns}, expected: spell-ns}
+  - {name: empty-spell, book: {namespace: book-ns}, chapter: {namespace: chapter-ns}, spell: {namespace: ""}, expected: chapter-ns}
+  - {name: null-spell, book: {namespace: book-ns}, chapter: {namespace: chapter-ns}, spell: {namespace: null}, expected: chapter-ns}
+  - {name: empty-chapter, book: {namespace: book-ns}, chapter: {namespace: ""}, spell: {}, expected: book-ns}
+  - {name: null-chapter, book: {namespace: book-ns}, chapter: {namespace: null}, spell: {}, expected: book-ns}
+  - {name: all-empty, book: {namespace: ""}, chapter: {namespace: ""}, spell: {namespace: ""}, expected: null}
+  - {name: all-null, book: {namespace: null}, chapter: {namespace: null}, spell: {namespace: null}, expected: null}
+  - {name: no-index, book: {}, chapter: null, spell: {}, expected: null}
+  - {name: no-index-book, book: {namespace: book-ns}, chapter: null, spell: {}, expected: book-ns}
+  - {name: no-index-spell, book: {namespace: book-ns}, chapter: null, spell: {namespace: spell-ns}, expected: spell-ns}

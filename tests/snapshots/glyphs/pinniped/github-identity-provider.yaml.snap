@@ -1,0 +1,35 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: GitHubIdentityProvider
+metadata:
+  name: github
+  namespace: pinniped-supervisor
+spec:
+
+  allowAuthentication:
+    organizations:
+      allowed:
+      - example-org
+      policy: OnlyUsersFromAllowedOrganizations
+  claims:
+    groups: slug
+    username: login:id
+  client:
+    secretName: github-oauth-client

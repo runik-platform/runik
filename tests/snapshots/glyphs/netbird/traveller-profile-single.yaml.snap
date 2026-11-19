@@ -1,0 +1,103 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNameserverGroup
+metadata:
+  name: roaming-dns
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "roaming-dns"
+  description: "DNS for traveller profile roaming"
+  nameservers:
+    - ip: "1.1.1.1"
+      nsType: "udp"
+      port: 53
+  enabled: true
+  primary: true
+  searchDomainsEnabled: false
+  groupRefs:
+    - "travellers"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: roaming-peer-access
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "roaming-peer-access"
+  description: "Permit clients to reach exit-node peers for roaming"
+  enabled: true
+  state: "present"
+  sourceGroupRefs:
+    - "travellers"
+  destinationGroupRefs:
+    - "exit-routers"
+  rules:
+    - name: routed-traffic
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: all
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: roaming
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  description: "Traveller full-tunnel profile roaming"
+  networkId: "roaming"
+  network: "0.0.0.0/0"
+  peerGroupRefs:
+    - "exit-routers"
+  groupRefs:
+    - "travellers"
+  accessControlGroupRefs:
+    - "exit-routers"
+  enabled: true
+  masquerade: true
+  metric: 100
+  keepRoute: false
+  skipAutoApply: true

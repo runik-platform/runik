@@ -1,0 +1,185 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: fwhq-routers
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwhq-routers"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: fwhq-resources
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwhq-resources"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetwork
+metadata:
+  name: fwhq
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwhq"
+  description: "Network location fwhq"
+  enabled: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkResource
+metadata:
+  name: fwhq-office
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  networkRef:
+    name: "fwhq"
+  name: "office"
+  description: ""
+  address: "10.55.0.0/16"
+  enabled: true
+  groupRefs:
+    - "fwhq-resources"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkRouter
+metadata:
+  name: fwhq-router
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  networkRef:
+    name: "fwhq"
+  peerGroupRefs:
+    - "fwhq-routers"
+    - "shared-edge-routers"
+  enabled: true
+  masquerade: true
+  metric: 200
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerGroupBinding
+metadata:
+  name: fwhq-router-primary
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  peerRef: "fwhq-primary"
+  groupRef: "fwhq-routers"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerGroupBinding
+metadata:
+  name: fwhq-router-secondary
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  peerRef: "fwhq-secondary"
+  groupRef: "fwhq-routers"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: fwhq-access
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "fwhq-access"
+  state: "present"
+  description: "Allow selected groups to reach fwhq resources"
+  enabled: true
+  sourceGroupRefs:
+    - "operations"
+  destinationGroupRefs:
+    - "fwhq-resources"
+  sourcePostureCheckRefs:
+    - "managed-device"
+  rules:
+    - action: accept
+      bidirectional: false
+      enabled: true
+      name: office
+      protocol: all

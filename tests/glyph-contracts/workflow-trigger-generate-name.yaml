@@ -1,0 +1,65 @@
+name: workflow-trigger-generate-name
+
+spellbook:
+  name: test-book
+
+chapter:
+  name: workflows
+
+lexicon:
+  automation-eventbus:
+    type: event-bus
+    labels:
+      purpose: automation
+      default: book
+
+  forgejo-source:
+    type: event-source
+    eventName: forgejo
+    labels:
+      source: forgejo
+
+  component-reading:
+    type: tarot-reading
+    labels:
+      process: component-ci
+      version: v1
+    scope: namespace
+    namespace: component-ci
+    contract:
+      inputs:
+        parameters:
+          COMPONENT_REPO:
+            required: true
+
+  component-trigger:
+    type: workflow-trigger
+    sensorSelector:
+      purpose: workflow-execution
+    readingSelector:
+      process: component-ci
+      version: v1
+    generateName:
+      dataTemplate: 'runik-component-pr-gate-{{ .Input.body.repository.name }}-'
+    filters:
+      exprs:
+        - expr: event_type == "pull_request"
+          fields:
+            - name: event_type
+              path: header.X-Gitea-Event.0
+    parameters:
+      COMPONENT_REPO:
+        from: body.repository.name
+
+glyphs:
+  argo-events:
+    workflow-sensor:
+      type: sensor
+      labels:
+        purpose: workflow-execution
+      selector:
+        purpose: automation
+      eventSourceSelector:
+        source: forgejo
+      template:
+        serviceAccountName: workflow-sensor

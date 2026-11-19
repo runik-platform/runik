@@ -57,6 +57,8 @@ spec:
   allowedRoles:
     - shared-elastic-*-rw
     - shared-elastic-*-ro
+  # VCO 1 requires this field; plugins using databaseSpecificConfig keep it empty.
+  connectionURL: ""
   passwordAuthentication: "password"
   databaseSpecificConfig:
     url: http://shared-elastic-es-http.elastic-infra.svc:9200

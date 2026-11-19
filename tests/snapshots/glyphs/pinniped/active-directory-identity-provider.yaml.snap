@@ -1,0 +1,41 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: ActiveDirectoryIdentityProvider
+metadata:
+  name: active-directory
+  namespace: pinniped-supervisor
+spec:
+
+  bind:
+    secretName: active-directory-bind-account
+  groupSearch:
+    base: DC=example,DC=com
+  host: ad.example.com:636
+  tls:
+    certificateAuthorityDataSource:
+      key: ca.crt
+      kind: Secret
+      name: active-directory-ca
+  userSearch:
+    attributes:
+      uid: objectGUID
+      username: userPrincipalName
+    base: DC=example,DC=com
+    filter: (&(objectClass=person)(userPrincipalName={}))

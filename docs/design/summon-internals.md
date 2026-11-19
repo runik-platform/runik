@@ -61,7 +61,7 @@ comments and examples. Key top-level sections include:
 - `configMaps` / `secrets` -- unified contentType system
 - `volumes` -- pvc, hostPath, nfs, emptyDir
 - `envs` -- simple values, secret refs, configmap refs
-- `autoscaling` -- HPA configuration
+- `autoscaling` -- replica ownership and HPA configuration
 - `serviceAccount`, `securityContext`, `probes`, `initContainers`, `sideCars`
 
 ### templates/summon.yaml -- The Orchestrator
@@ -215,11 +215,13 @@ pod template inside `spec.jobTemplate.spec.template` and Job defaults
 
 Each workload template adds fields specific to its kind:
 
+Both Deployment and StatefulSet preserve explicit `workload.replicas: 0` when autoscaling is disabled and use `1` only when the value is absent. `summon.autoscaling` validates enabled modes centrally: omitted mode defaults to `hpa`, `hpa` emits the existing HPA, and `external` emits nothing. Summon and Microspell both call this helper; external controllers are configured separately.
+
 **Deployment** -- adds `replicas` (omitted when autoscaling is enabled),
 `selector.matchLabels`, rolling update strategy support, `hostNetwork`, and
 `dnsPolicy`.
 
-**StatefulSet** -- adds `replicas`, `serviceName` (defaults to the release
+**StatefulSet** -- adds `replicas` (omitted when autoscaling is enabled), `serviceName` (defaults to the release
 name), `podManagementPolicy`, and `volumeClaimTemplates` which are rendered by
 iterating `workload.volumeClaimTemplates`:
 
@@ -655,18 +657,18 @@ Each example file is a valid `values.yaml` override. You can render any example
 directly:
 
 ```bash
-helm template my-release charts/summon/ -f charts/summon/examples/basic-deployment.yaml
+make render summon basic-deployment.yaml
 ```
 
 ### Test Workflow
 
-You run tests using make targets. The test system renders each example with
+Run the Make targets from the Runik root. The test system renders each example with
 `helm template` and compares the output against stored snapshots.
 
 **Run all tests for summon:**
 
 ```bash
-make test CHART=summon
+make test summon
 ```
 
 This iterates over every file in `charts/summon/examples/`, renders it, and
@@ -676,168 +678,51 @@ the snapshot, the test fails with a diff.
 **Run a single example:**
 
 ```bash
-make test CHART=summon EXAMPLE=basic-deployment
+make test summon basic-deployment.yaml
 ```
 
 This renders only `charts/summon/examples/basic-deployment.yaml` and compares
-against its snapshot. Use this when you are working on a specific feature and
-want fast feedback.
+against `tests/snapshots/summon/basic-deployment.yaml.snap`.
 
 **Regenerate snapshots after intentional changes:**
 
 ```bash
-make generate-snapshots CHART=summon
+make snapshot summon basic-deployment.yaml
 ```
 
-After you modify template logic and verify the new output is correct, run this
-to update all snapshots to match the current rendering. Always review the diff
-before regenerating.
+This updates the baseline for the reviewed example. Omit the filename when
+you intend to update every Summon snapshot.
 
-**Create a new example for a feature:**
+### Verify a ConfigMap mount and its checksum
+
+The existing `deployment-with-config-checksums.yaml` example creates a
+ConfigMap from `configMaps.app-config`. The entry sets `name: config.yml`,
+`mountPath: /app/config`, and `contentType: yaml`. Render it from the Runik root.
 
 ```bash
-make create-example CHART=summon EXAMPLE=my-feature
+make render summon deployment-with-config-checksums.yaml
 ```
 
-This scaffolds a new example file at
-`charts/summon/examples/my-feature.yaml` with a minimal template and generates
-its initial snapshot.
+Trace the value across the generated resources:
 
-### TDD Cycle
+1. The ConfigMap named `config-yml` contains the database and cache settings.
+2. The Deployment volume references `config-yml`. The container mounts its
+   key at `/app/config/config.yml`.
+3. The pod template carries `checksum/configmap-app-config`. Changing the
+   content of that ConfigMap changes the checksum and therefore the pod
+   template, which triggers a Deployment rollout when applied.
 
-The TDD workflow follows the standard red-green-refactor cycle, adapted for
-Helm chart development:
-
-**Red -- write a failing test:**
+To review a change to this behavior, compare the render with the existing
+baseline. After verifying an intentional difference, update that example's
+snapshot and run the Summon suite.
 
 ```bash
-make tdd-red
+make test summon deployment-with-config-checksums.yaml
+make snapshot summon deployment-with-config-checksums.yaml
+make test summon
 ```
 
-You create an example file that uses a feature that does not exist yet. The
-test fails because the template does not render the expected output.
-
-For instance, `test-feature-must-exist.yaml` enables `podDisruptionBudget`
-before the feature is implemented:
-
-```yaml
-# This test MUST FAIL if the feature does not exist
-workload:
-  enabled: true
-  type: deployment
-  replicas: 2
-
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-
-image:
-  repository: nginx
-  tag: alpine
-
-service:
-  enabled: true
-  ports:
-    - port: 80
-```
-
-When you render this, no PDB resource appears in the output. The snapshot
-captures the missing resource, and the test fails against the expected output
-that includes a PDB.
-
-**Green -- make it pass:**
-
-```bash
-make tdd-green
-```
-
-You implement the feature in the template code until the example renders
-correctly. For the PDB example, you would add a `summon.pdb` template and
-include it in the orchestrator.
-
-**Refactor -- clean up:**
-
-```bash
-make tdd-refactor
-```
-
-You restructure the template code without changing behavior. The test suite
-ensures that refactoring does not break any existing examples.
-
-### Example as Documentation
-
-Each example file doubles as documentation because it shows a complete,
-working configuration for a specific feature. When you want to understand how
-a feature works, you read the example and render it:
-
-```bash
-# See exactly what Kubernetes resources configmap-unified-contenttype generates
-helm template test charts/summon/ -f charts/summon/examples/configmap-unified-contenttype.yaml
-```
-
-The examples directory is the single source of truth for "what does summon
-actually produce?" -- you never need to read template code to understand the
-output if you have a matching example.
-
-### Writing a New Test
-
-To add a test for a new feature:
-
-1. Create an example file:
-
-```bash
-make create-example CHART=summon EXAMPLE=deployment-with-pdb
-```
-
-2. Edit the example with the desired input values:
-
-```yaml
-# charts/summon/examples/deployment-with-pdb.yaml
-workload:
-  enabled: true
-  type: deployment
-  replicas: 3
-
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 2
-
-image:
-  name: nginx
-  tag: alpine
-
-service:
-  enabled: true
-  ports:
-    - port: 80
-      name: http
-```
-
-3. Run the test to see it fail (red phase):
-
-```bash
-make test CHART=summon EXAMPLE=deployment-with-pdb
-```
-
-4. Implement the feature in the template code.
-
-5. Run the test to see it pass (green phase):
-
-```bash
-make test CHART=summon EXAMPLE=deployment-with-pdb
-```
-
-6. Generate the snapshot:
-
-```bash
-make generate-snapshots CHART=summon
-```
-
-7. Run the full suite to check for regressions:
-
-```bash
-make test CHART=summon
-```
+[Input values](../../charts/summon/examples/deployment-with-config-checksums.yaml) · [Expected manifests](../../tests/snapshots/summon/deployment-with-config-checksums.yaml.snap)
 
 ## Cross-References
 

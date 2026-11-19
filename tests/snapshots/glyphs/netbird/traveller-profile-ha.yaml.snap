@@ -1,0 +1,142 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNameserverGroup
+metadata:
+  name: managed-roaming-dns
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "managed-roaming-dns"
+  description: "DNS for traveller profile managed-roaming"
+  nameservers:
+    - ip: "10.42.0.2"
+      nsType: "udp"
+      port: 53
+  domains:
+    - "corp.example"
+  enabled: true
+  primary: true
+  searchDomainsEnabled: true
+  groupRefs:
+    - "travelling-staff"
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: managed-roaming-peer-access
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  name: "managed-roaming-peer-access"
+  description: "Permit clients to reach exit-node peers for managed-roaming"
+  enabled: true
+  state: "present"
+  sourceGroupRefs:
+    - "travelling-staff"
+  destinationGroupRefs:
+    - "exit-fwck"
+    - "exit-fwhq"
+  sourcePostureCheckRefs:
+    - "managed-device"
+  rules:
+    - name: routed-traffic
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: all
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: managed-roaming
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  description: "Traveller full-tunnel profile managed-roaming"
+  networkId: "managed-roaming"
+  network: "0.0.0.0/0"
+  peerGroupRefs:
+    - "exit-fwck"
+    - "exit-fwhq"
+  groupRefs:
+    - "travelling-staff"
+  accessControlGroupRefs:
+    - "exit-fwck"
+    - "exit-fwhq"
+  enabled: true
+  masquerade: true
+  metric: 200
+  keepRoute: false
+  skipAutoApply: true
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: managed-roaming-corp
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: example-networking
+    app.kubernetes.io/managed-by: Helm
+    spelbook: example-networking
+    chapter: production
+    spell: kaster
+spec:
+  description: "Private corporate prefixes"
+  networkId: "managed-roaming-corp"
+  network: "10.0.0.0/8"
+  peerGroupRefs:
+    - "exit-fwck"
+    - "exit-fwhq"
+  groupRefs:
+    - "travelling-staff"
+  accessControlGroupRefs:
+    - "exit-fwck"
+    - "exit-fwhq"
+  enabled: true
+  masquerade: true
+  keepRoute: false
+  skipAutoApply: true
+  metric: 100

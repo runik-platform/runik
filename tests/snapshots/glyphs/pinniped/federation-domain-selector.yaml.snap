@@ -1,0 +1,37 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: config.supervisor.pinniped.dev/v1alpha1
+kind: FederationDomain
+metadata:
+  name: workforce
+  namespace: pinniped-supervisor
+spec:
+
+  identityProviders:
+  - displayName: Corporate directory
+    objectRef:
+      apiGroup: idp.supervisor.pinniped.dev
+      kind: LDAPIdentityProvider
+      name: corporate-directory
+  - displayName: Keycloak workforce
+    objectRef:
+      apiGroup: idp.supervisor.pinniped.dev
+      kind: OIDCIdentityProvider
+      name: keycloak
+  issuer: https://login.example.com

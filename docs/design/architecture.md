@@ -565,7 +565,7 @@ one technology domain.
 | GCP | `charts/glyphs/gcp/` | Service accounts, KMS keys, networks, GKE clusters, VMs, DNS |
 | Crossplane | `charts/glyphs/crossplane/` | Crossplane Provider resources |
 | External Secrets | `charts/glyphs/external-secrets/` | ExternalSecret (AWS, GCP backends) |
-| S3 | `charts/glyphs/s3/` | S3/SeaweedFS bucket provisioning |
+| S3 | `charts/glyphs/s3/` | S3/VersityGW bucket provisioning |
 | Argo Events | `charts/glyphs/argo-events/` | EventSource, Sensor |
 | Keycloak | `charts/glyphs/keycloak/` | Realm, Client, User, Group, IDP, AuthFlow |
 | FreeForm | `charts/glyphs/free-form/` | Arbitrary YAML resources |

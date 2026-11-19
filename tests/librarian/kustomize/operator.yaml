@@ -1,0 +1,38 @@
+name: operator
+repository: https://git.example.com/platform/operator.git
+path: config/default
+revision: upstream
+kustomize:
+  images:
+    - controller=registry.example.com/operator:1.0.0
+  replicas:
+    - name: controller-manager
+      count: 2
+  components: [../metrics]
+  commonAnnotations:
+    platform.example.com/managed: "true"
+  patches:
+    - target:
+        kind: Deployment
+        name: controller-manager
+      patch: |-
+        - op: add
+          path: /spec/template/spec/nodeSelector
+          value:
+            kubernetes.io/os: linux
+glyphs:
+  vault:
+    operator:
+      type: prolicy
+runes:
+  - repository: https://git.example.com/platform/sidecar.git
+    path: deploy
+    revision: v2.0.0
+    kustomize:
+      images:
+        - sidecar=registry.example.com/sidecar:2.0.0
+  - repository: https://charts.example.com
+    chart: database
+    revision: 3.0.0
+    values:
+      replicas: 1

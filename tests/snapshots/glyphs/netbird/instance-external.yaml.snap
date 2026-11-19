@@ -1,0 +1,91 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdInstance
+metadata:
+  name: default
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: netbird
+    app.kubernetes.io/managed-by: Helm
+    spelbook: netbird
+    chapter: networking
+    spell: kaster
+spec:
+  bootstrap:
+    accountName: example
+    credentialSecretRef:
+      key: NB_API_KEY
+      name: netbird-owner-api-key
+    ownerName: operator-owner
+  dashboard:
+    endpoint: https://netbird.example.com
+    mode: external
+  database:
+    secretRef:
+      key: uri
+      name: netbird-pg-app
+  encryptionKeySecretRef:
+    key: key
+    name: netbird-encryption
+  lifecycle:
+    deletionPolicy: DeleteRuntime
+  management:
+    bootstrapSecretRef:
+      key: token
+      name: external-bootstrap
+    endpoint: https://management.example.com
+    mode: external
+    publicEndpoint: https://netbird.example.com
+  oidc:
+    clientID: netbird
+    clientSecretRef:
+      key: client-secret
+      name: netbird-oidc
+    issuer: https://sso.example.com/realms/netbird
+  relays:
+  - endpoint: rels://relay-fwck.example.com:443
+    location: fwck
+    mode: external
+    name: fwck
+  - endpoint: rels://relay-fwhq.example.com:443
+    location: fwhq
+    mode: external
+    name: fwhq
+  signals:
+  - endpoint: grpcs://signal-fwck.example.com:443
+    location: fwck
+    mode: external
+    name: primary
+  stunTurns:
+  - endpoints:
+    - stun:stun-fwck.example.com:3478
+    location: fwck
+    mode: external
+    name: fwck
+  - credentialSecretRef:
+      key: shared-secret
+      name: netbird-turn
+    endpoints:
+    - turns:turn-fwhq.example.com:5349
+    location: fwhq
+    mode: external
+    name: fwhq

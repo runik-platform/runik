@@ -93,12 +93,15 @@ spec:
     name: api-keys
     creationPolicy: Orphan
     deletionPolicy: Merge
-  dataFrom:
-    - extract:
-        conversionStrategy: Default
-        decodingStrategy: None
-        metadataPolicy: None
-        key: kv/data/default/default/glyphs-release/publics/api-keys
+  data:
+    - secretKey: primary_key
+      remoteRef:
+        key: /production/keys/primary
+        property: primary_key
+    - secretKey: secondary_key
+      remoteRef:
+        key: /production/keys/secondary
+        property: secondary_key
 ---
 # Source: kaster/templates/kaster.yaml
 apiVersion: external-secrets.io/v1

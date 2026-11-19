@@ -25,12 +25,10 @@ charts/glyphs/vault/
 │   ├── random-secret.tpl   # vault.randomSecret helper
 │   ├── crypto-key.tpl      # vault.crypto-key type
 │   └── ...
-├── examples/               # TDD example values files
-│   ├── secrets.yaml
-│   ├── random-secrets.yaml
-│   ├── prolicy-test.yaml
-│   └── ...
-└── expected-output/        # Snapshot test baselines (when present)
+└── examples/               # TDD example values files
+    ├── policy-role.yaml
+    ├── random-secrets.yaml
+    ├── prolicy-test.yaml
     └── ...
 ```
 
@@ -67,14 +65,15 @@ Example values files serve as test cases for the glyph. You render them with
 self-contained spell fragment that exercises a specific feature of the glyph.
 
 ```bash
-helm template test-release charts/kaster/ -f charts/glyphs/vault/examples/secrets.yaml
+make render glyph vault policy-role.yaml
 ```
 
-### expected-output/
+### Snapshot baselines in Runik
 
-When present, this directory contains snapshot baselines for the rendered
-output of the example files. CI compares `helm template` output against these
-baselines to catch regressions.
+From the Runik root, `make test glyph vault policy-role.yaml` compares the
+rendered example with `tests/snapshots/glyphs/vault/policy-role.yaml.snap`.
+After reviewing an intentional change to the manifest, use
+`make snapshot glyph vault policy-role.yaml` to update that baseline.
 
 ## Type System
 
@@ -309,8 +308,13 @@ Inside the template, you destructure the list:
 | `$root.Release.Namespace`   | Kubernetes namespace for the release                |
 | `$root.Subcharts`           | Map of available subcharts (glyph charts)           |
 
-Templates use `$root` to call shared helpers (`common.name`, `common.labels`)
-and to query the lexicon via the runic indexer:
+Templates pass `$root` directly to legacy helpers such as `common.name`, or
+as the `root` field of the named arguments to `common.glyph.name`. Use
+`common.glyph.name` to compose glyph resource names and reuse the result in
+their references; normalization is opt-in. See the
+[resource naming contract](creating-glyphs.md#resource-names-with-common) for
+affix order, fallbacks and compatibility. `$root` also supplies the lexicon
+queried by the runic indexer:
 
 ```go
 {{- $vaultServer := get (include "runic-system.runic-indexer"
@@ -324,8 +328,9 @@ and to query the lexicon via the runic indexer:
 ### Second Argument: Glyph Definition
 
 `$glyphDefinition` (index 1) is the specific glyph configuration from the
-spell YAML, with the key name merged in as `$glyphDefinition.name`. This
-object contains all the user-specified fields for that glyph entry.
+spell YAML, with the key name used as `$glyphDefinition.name` when no nonempty
+explicit `name` is supplied. This object contains all the user-specified fields
+for that glyph entry.
 
 For a vault secret, the definition might look like:
 
@@ -369,7 +374,7 @@ between kaster and every glyph template is always `(list $root $glyphDefinition)
 
 ## Distribution
 
-`charts/glyphs/` is the canonical location for every glyph chart. Consumers (`charts/kaster/`, `charts/summon/`, `charts/trinkets/microspell/`, `charts/trinkets/tarot/`, `covenant/`) pick up glyphs through git submodules, each pointing at the same `glyphs.git` repository. To ship a change to a glyph, commit and push in the canonical `charts/glyphs/` submodule, then bump the submodule reference in every consumer so the new commit propagates. See the [root CLAUDE.md](../../CLAUDE.md) for the submodule layout.
+`charts/glyphs/` is the canonical location for every glyph chart. Kaster, Summon, Microspell, Tarot and Covenant load glyphs through git submodules so each consumer can pin the same exact templates. On a push to `glyphs/upstream`, the Glyphs repository runs `.argo/synchronize.yaml` to validate and propagate that revision through the consumers and then Runik. [Synchronization and recovery](creating-glyphs.md#step-7-distribute-the-glyph)
 
 ## Available Glyphs
 
@@ -392,7 +397,7 @@ The following glyphs are currently available in the repository:
 | `postgresql`      | PostgreSQL resource types                                   |
 | `cert-manager`     | Certificate Manager resource types                          |
 | `gcp`             | GCP infrastructure types                                    |
-| `common`          | Shared helpers (`common.name`, `common.labels`, `common.secretPath`) |
+| `common`          | Shared helpers (`common.glyph.name`, `common.name.normalize`, `common.name`, label/annotation helpers, `common.secretPath`) |
 | `runic-system`    | `runic-system.runic-indexer` (lexicon query engine)          |
 
 ## Cross-References

@@ -33,12 +33,13 @@ SHELL := /bin/bash
 # Paths
 # ---------------------------------------------------------------------------
 KASTER_DIR     := charts/kaster
-GLYPHS_DIR     := charts/glyphs
+GLYPHS_DIR     ?= charts/glyphs
 SUMMON_DIR     := charts/summon
 MICROSPELL_DIR := charts/trinkets/microspell
 TAROT_DIR      := charts/trinkets/tarot
 LIBRARIAN_DIR  := librarian
 COVENANT_DIR   := covenant
+GLYPH_MIRRORS := $(KASTER_DIR)/charts $(SUMMON_DIR)/charts $(MICROSPELL_DIR)/charts $(TAROT_DIR)/charts $(COVENANT_DIR)/charts
 BOOKRACK_DIR   := bookrack
 SNAPSHOTS_DIR  := tests/snapshots
 KNOWN_EMPTY_FIXTURES := tests/known-empty-fixtures.txt
@@ -49,6 +50,7 @@ COVENANT_IAM_BOOKS_FILE := tests/covenant-iam-books.txt
 TEST_RELEASE   ?= test
 TEST_NAMESPACE ?= glyphs-release
 HELM_TEST      := helm template $(TEST_RELEASE) --namespace $(TEST_NAMESPACE)
+PROMTOOL       ?= promtool
 
 # ---------------------------------------------------------------------------
 # Dynamic lists
@@ -82,7 +84,7 @@ FILE     := $(word 3,$(ARGS))
 # Public targets
 # ============================================================================
 
-.PHONY: help render test snapshot list verify smoke ci
+.PHONY: help render test snapshot list verify smoke check-glyph-names test-glyph-name-checker test-glyph-contracts test-postgresql-observability test-autoscaling test-librarian test-component-candidate prepare-component-candidate verify-component-candidate ci ci-component-candidate ci-glyphs-candidate
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -110,7 +112,17 @@ help: ## Show this help
 	@echo "  make test all                       Test all golden snapshots"
 	@echo "  make smoke                          Render kaster and trinket examples"
 	@echo "  make verify                         Check submodules, snapshots, and empty renders"
+	@echo "  make check-glyph-names              Reject duplicate Glyph chart/template names"
+	@echo "  make test-glyph-name-checker        Test the global-name checker"
+	@echo "  make test-glyph-contracts           Test cross-consumer Glyph contracts"
+	@echo "  make test-postgresql-observability  Test PostgreSQL dashboards, alerts and PromQL"
+	@echo "  make test-autoscaling               Test Summon and Microspell scaling modes"
+	@echo "  make test-librarian                 Test Librarian source contracts"
+	@echo "  make test-component-candidate       Test prospective Glyph dependency preparation"
 	@echo "  make ci                             Run the complete CI suite"
+	@echo "  make ci-component-candidate COMPONENT=<name>"
+	@echo "                                      Test a prospective Runik component"
+	@echo "  make ci-glyphs-candidate            Compatibility alias for COMPONENT=glyphs"
 	@echo ""
 	@echo "$(CYAN)List:$(RESET)"
 	@echo "  make list glyphs                   List available glyphs"
@@ -542,6 +554,14 @@ snapshot:
 		echo "========================================"; \
 		echo "$(BOLD)Total:$(RESET) $$total_saved saved, $$total_errors errors"; \
 		if [ $$total_errors -gt 0 ]; then exit 1; fi; \
+		while IFS= read -r snapshot; do \
+			relative=$${snapshot#$(SNAPSHOTS_DIR)/glyphs/}; \
+			glyph=$${relative%%/*}; fixture=$${relative#*/}; \
+			if [ ! -f "$(GLYPHS_DIR)/$$glyph/examples/$${fixture%.snap}" ]; then \
+				rm -- "$$snapshot"; \
+				echo "  $(YELLOW)REMOVED$(RESET)  $$relative (fixture removed)"; \
+			fi; \
+		done < <(find "$(SNAPSHOTS_DIR)/glyphs" -type f -name '*.yaml.snap' | sort); \
 		;; \
 	*) \
 		echo "$(RED)$(BOLD)Error:$(RESET) Unknown resource '$$resource'"; \
@@ -785,10 +805,12 @@ test:
 		test "$$(yq -r 'select(.kind == "RandomSecret" and .metadata.name == "principal-password-kim-pyne") | .spec.path' "$$tmp_dir/principals.yaml")" = secret/data/covenant/example/principals/; \
 		test "$$(yq -r 'select(.kind == "RandomSecret" and .metadata.name == "principal-password-kim-pyne") | .spec.authentication.serviceAccount.name' "$$tmp_dir/principals.yaml")" = covenant-example-principals-k; \
 		test "$$(yq -r 'select(.kind == "VaultSecret" and .metadata.name == "principal-password-kim-pyne") | .spec.vaultSecretDefinitions[0].path' "$$tmp_dir/principals.yaml")" = secret/data/covenant/example/principals/principal-password-kim-pyne; \
-		yq -r 'select(.kind == "Policy" and .metadata.name == "covenant-example-principals-k") | .spec.policy' "$$tmp_dir/principals.yaml" | grep -q 'secret/data/covenant/example/principals/principal-password-kim-pyne'; \
+		principals_policy=$$(yq -r 'select(.kind == "Policy" and .metadata.name == "covenant-example-principals-k") | .spec.policy' "$$tmp_dir/principals.yaml"); \
+		grep -Fq 'secret/data/covenant/example/principals/principal-password-kim-pyne' <<< "$$principals_policy"; \
 		test "$$(yq -r 'select(.kind == "RandomSecret" and .metadata.name == "client-credentials-console-example") | .spec.path' "$$tmp_dir/covenant.yaml")" = secret/data/covenant/example/clients/; \
 		test "$$(yq -r 'select(.kind == "VaultSecret" and .metadata.name == "client-credentials-console-example") | .spec.vaultSecretDefinitions[0].path' "$$tmp_dir/covenant.yaml")" = secret/data/covenant/example/clients/client-credentials-console-example; \
-		yq -r 'select(.kind == "Policy" and .metadata.name == "covenant-console-example-console") | .spec.policy' "$$tmp_dir/covenant.yaml" | grep -q 'secret/data/covenant/example/clients/client-credentials-console-example'; \
+		client_policy=$$(yq -r 'select(.kind == "Policy" and .metadata.name == "covenant-console-example-console") | .spec.policy' "$$tmp_dir/covenant.yaml"); \
+		grep -Fq 'secret/data/covenant/example/clients/client-credentials-console-example' <<< "$$client_policy"; \
 		test "$$(yq -r 'select(.kind == "KeycloakClient" and .spec.clientId == "public") | .spec | has("secret")' "$$tmp_dir/covenant.yaml")" = false; \
 		test "$$(yq -r 'select(.kind == "KeycloakClient" and .spec.protocol == "saml") | .spec | has("secret")' "$$tmp_dir/covenant.yaml")" = false; \
 		test "$$(yq -r 'select(.kind == "ClusterKeycloakRealm") | .metadata.annotations."argocd.argoproj.io/sync-wave"' "$$tmp_dir/covenant.yaml")" = 0; \
@@ -824,7 +846,7 @@ test:
 		yq -S 'del(.a)' "$$tmp_dir/added.json" > "$$tmp_dir/unaffected-after.json"; \
 		cmp "$$tmp_dir/unaffected-before.json" "$$tmp_dir/unaffected-after.json"; \
 		test "$$(yq -r '.a != null' "$$tmp_dir/added.json")" = true; \
-		test "$$(yq -r '.a' "$$tmp_dir/added.json" | base64 --decode | yq -s -r '[.[] | select(.kind == "KeycloakRealmUser") | .spec.email] | join(",")')" = 'a.z@example.test,a0@example.test,aaron@example.test'; \
+		test "$$(yq -r '.a' "$$tmp_dir/added.json" | base64 -d | yq -s -r '[.[] | select(.kind == "KeycloakRealmUser") | .spec.email] | join(",")')" = 'a.z@example.test,a0@example.test,aaron@example.test'; \
 		test "$$(yq -r 'has("0-9")' "$$tmp_dir/baseline.json")" = true; \
 		test "$$(yq -r 'has("z")' "$$tmp_dir/baseline.json")" = false; \
 		test "$$(yq -r 'has("z")' "$$tmp_dir/new-letter.json")" = true; \
@@ -879,21 +901,21 @@ test:
 			if ! $(HELM_TEST) ./$(SUMMON_DIR) -f "$$f" > "$$tmp"; then \
 				echo "  $(RED)FAIL$(RESET) $(RED)(render error)$(RESET)  $$fname"; \
 				total_fail=$$((total_fail + 1)); \
-				if ! echo "$$failed_list" | grep -q "summon"; then \
+				if ! grep -Fq "summon" <<< "$$failed_list"; then \
 					failed_list="$$failed_list summon"; \
 				fi; \
 			elif [ ! -f "$$snap" ]; then \
 				echo "  $(RED)FAIL$(RESET) $(YELLOW)(no snapshot)$(RESET)   $$fname"; \
 				total_fail=$$((total_fail + 1)); \
 				total_no_snap=$$((total_no_snap + 1)); \
-				if ! echo "$$failed_list" | grep -q "summon"; then \
+				if ! grep -Fq "summon" <<< "$$failed_list"; then \
 					failed_list="$$failed_list summon"; \
 				fi; \
 			elif ! diff -q "$$snap" "$$tmp" >/dev/null 2>&1; then \
 				echo "  $(RED)FAIL$(RESET) $(RED)(changed)$(RESET)       $$fname"; \
 				diff --color=auto "$$snap" "$$tmp" | head -20 || true; \
 				total_fail=$$((total_fail + 1)); \
-				if ! echo "$$failed_list" | grep -q "summon"; then \
+				if ! grep -Fq "summon" <<< "$$failed_list"; then \
 					failed_list="$$failed_list summon"; \
 				fi; \
 			else \
@@ -910,21 +932,21 @@ test:
 			if ! helm template "$$book" ./$(LIBRARIAN_DIR) > "$$tmp"; then \
 				echo "  $(RED)FAIL$(RESET) $(RED)(render error)$(RESET)  $$book"; \
 				total_fail=$$((total_fail + 1)); \
-				if ! echo "$$failed_list" | grep -q "books"; then \
+				if ! grep -Fq "books" <<< "$$failed_list"; then \
 					failed_list="$$failed_list books"; \
 				fi; \
 			elif [ ! -f "$$snap" ]; then \
 				echo "  $(RED)FAIL$(RESET) $(YELLOW)(no snapshot)$(RESET)   $$book"; \
 				total_fail=$$((total_fail + 1)); \
 				total_no_snap=$$((total_no_snap + 1)); \
-				if ! echo "$$failed_list" | grep -q "books"; then \
+				if ! grep -Fq "books" <<< "$$failed_list"; then \
 					failed_list="$$failed_list books"; \
 				fi; \
 			elif ! diff -q "$$snap" "$$tmp" >/dev/null 2>&1; then \
 				echo "  $(RED)FAIL$(RESET) $(RED)(changed)$(RESET)       $$book"; \
 				diff --color=auto "$$snap" "$$tmp" | head -20 || true; \
 				total_fail=$$((total_fail + 1)); \
-				if ! echo "$$failed_list" | grep -q "books"; then \
+				if ! grep -Fq "books" <<< "$$failed_list"; then \
 					failed_list="$$failed_list books"; \
 				fi; \
 			else \
@@ -992,7 +1014,8 @@ verify:
 	if [ $$status -eq 0 ]; then \
 		echo "$(GREEN)PASS$(RESET) every glyph mirror matches the canonical checkout"; \
 	fi; \
-	find $(BOOKRACK_DIR) -mindepth 2 -maxdepth 2 -type f -name index.yaml -printf '%h\n' | sed 's|.*/||' | sort -u > "$$tmp_dir/all-books"; \
+	find $(BOOKRACK_DIR) -mindepth 2 -maxdepth 2 -type f -name index.yaml -print \
+		| sed 's|/[^/]*$$||; s|.*/||' | sort -u > "$$tmp_dir/all-books"; \
 	cat $(LIBRARIAN_BOOKS_FILE) $(COVENANT_APPLICATION_BOOKS_FILE) $(COVENANT_IAM_BOOKS_FILE) | grep -Ev '^[[:space:]]*(#|$$)' | sort -u > "$$tmp_dir/classified-books"; \
 	if ! diff -u "$$tmp_dir/all-books" "$$tmp_dir/classified-books"; then \
 		echo "$(RED)FAIL$(RESET) every bookrack fixture must have an explicit test role"; \
@@ -1009,17 +1032,19 @@ verify:
 		echo "$(GREEN)PASS$(RESET) Covenant application-book inventory is exact"; \
 	fi; \
 	printf '%s\n' $(BOOKS) | sort -u > "$$tmp_dir/librarian-books"; \
-	if ! comm -23 "$$tmp_dir/covenant-books" "$$tmp_dir/librarian-books" | grep -q .; then \
+	comm -23 "$$tmp_dir/covenant-books" "$$tmp_dir/librarian-books" > "$$tmp_dir/missing-covenant-books"; \
+	if [ ! -s "$$tmp_dir/missing-covenant-books" ]; then \
 		echo "$(GREEN)PASS$(RESET) every Covenant application source is a Librarian fixture"; \
 	else \
 		echo "$(RED)FAIL$(RESET) Covenant application sources must be deployable Librarian fixtures"; \
-		comm -23 "$$tmp_dir/covenant-books" "$$tmp_dir/librarian-books"; \
+		cat "$$tmp_dir/missing-covenant-books"; \
 		status=1; \
 	fi; \
 	printf '%s\n' $(COVENANT_IAM_BOOKS) | sort -u > "$$tmp_dir/covenant-iam-books"; \
-	if comm -12 "$$tmp_dir/covenant-iam-books" "$$tmp_dir/librarian-books" | grep -q .; then \
+	comm -12 "$$tmp_dir/covenant-iam-books" "$$tmp_dir/librarian-books" > "$$tmp_dir/overlapping-covenant-books"; \
+	if [ -s "$$tmp_dir/overlapping-covenant-books" ]; then \
 		echo "$(RED)FAIL$(RESET) Covenant IAM inputs must not be Librarian fixtures"; \
-		comm -12 "$$tmp_dir/covenant-iam-books" "$$tmp_dir/librarian-books"; \
+		cat "$$tmp_dir/overlapping-covenant-books"; \
 		status=1; \
 	else \
 		echo "$(GREEN)PASS$(RESET) Covenant IAM inputs are not Librarian fixtures"; \
@@ -1117,11 +1142,515 @@ smoke:
 	fi; \
 	if [ $$failures -gt 0 ]; then exit 1; fi
 
+check-glyph-names:
+	@command -v rg >/dev/null 2>&1 || { \
+		echo "$(RED)$(BOLD)Error:$(RESET) ripgrep (rg) is required" >&2; \
+		exit 1; \
+	}; \
+	rg --pcre2-version >/dev/null 2>&1 || { \
+		echo "$(RED)$(BOLD)Error:$(RESET) ripgrep must include PCRE2 support" >&2; \
+		exit 1; \
+	}; \
+	root="$(abspath $(GLYPHS_DIR))"; \
+	definitions=$$(mktemp); \
+	charts=$$(mktemp); \
+	matches=$$(mktemp); \
+	trap 'rm -f "$$definitions" "$$charts" "$$matches"' EXIT; \
+	chart_count=0; \
+	for chart in "$$root"/*/Chart.yaml; do \
+		test -f "$$chart" || continue; \
+		chart_count=$$((chart_count + 1)); \
+		chart_name=$$(awk '$$1 == "name:" { print $$2; exit }' "$$chart"); \
+		if [ -z "$$chart_name" ]; then \
+			echo "ERROR: Chart name missing from $$chart" >&2; \
+			exit 1; \
+		fi; \
+		printf '%s\t%s\n' "$$chart_name" "$$chart" >> "$$charts"; \
+		templates="$${chart%/Chart.yaml}/templates"; \
+		test -d "$$templates" || continue; \
+		rg --multiline --pcre2 --no-heading --line-number --only-matching \
+			'(?s)\{\{-?\s*(?:define|block)\s+"\K[^"]+' "$$templates" \
+			>> "$$matches" || true; \
+	done; \
+	if [ "$$chart_count" -eq 0 ]; then \
+		echo "ERROR: no Glyph charts found below $$root" >&2; \
+		exit 1; \
+	fi; \
+	sed -nE \
+		's~^([^:]+):([0-9]+):(.*)$$~\3\t\1:\2~p' \
+		"$$matches" | sort -k1,1 > "$$definitions"; \
+	duplicate_templates=$$(cut -f1 "$$definitions" | uniq -d); \
+	if [ -n "$$duplicate_templates" ]; then \
+		echo "Duplicate Helm named templates:" >&2; \
+		while IFS= read -r template; do \
+			awk -F '\t' -v template="$$template" \
+				'$$1 == template { print "  " $$0 }' "$$definitions" >&2; \
+		done <<< "$$duplicate_templates"; \
+		exit 1; \
+	fi; \
+	sort -k1,1 "$$charts" -o "$$charts"; \
+	duplicate_charts=$$(cut -f1 "$$charts" | uniq -d); \
+	if [ -n "$$duplicate_charts" ]; then \
+		echo "Duplicate Glyph chart names:" >&2; \
+		while IFS= read -r chart_name; do \
+			awk -F '\t' -v chart_name="$$chart_name" \
+				'$$1 == chart_name { print "  " $$0 }' "$$charts" >&2; \
+		done <<< "$$duplicate_charts"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)PASS$(RESET) $$(wc -l < "$$definitions") Helm named templates are globally unique"; \
+	echo "$(GREEN)PASS$(RESET) $$chart_count Glyph chart names are unique"
+
+test-glyph-name-checker:
+	@logs=$$(mktemp -d); \
+	trap 'rm -rf "$$logs"' EXIT; \
+	$(MAKE) --no-print-directory check-glyph-names \
+		GLYPHS_DIR=tests/glyph-name-checker/unique > "$$logs/unique"; \
+	for fixture in duplicate-template define-vs-block; do \
+		if $(MAKE) --no-print-directory check-glyph-names \
+			GLYPHS_DIR="tests/glyph-name-checker/$$fixture" > "$$logs/$$fixture" 2>&1; then \
+			echo "$(RED)FAIL$(RESET) $$fixture was accepted" >&2; \
+			exit 1; \
+		fi; \
+		rg -Fq 'Duplicate Helm named templates:' "$$logs/$$fixture"; \
+	done; \
+	if $(MAKE) --no-print-directory check-glyph-names \
+		GLYPHS_DIR=tests/glyph-name-checker/duplicate-chart > "$$logs/duplicate-chart" 2>&1; then \
+		echo "$(RED)FAIL$(RESET) duplicate-chart was accepted" >&2; \
+		exit 1; \
+	fi; \
+	rg -Fq 'Duplicate Glyph chart names:' "$$logs/duplicate-chart"; \
+	echo "$(GREEN)PASS$(RESET) global name checker accepts unique fixtures"; \
+	echo "$(GREEN)PASS$(RESET) global name checker rejects duplicate define, block, and chart names"
+
+test-postgresql-observability:
+	@for tool in helm yq jq; do command -v "$$tool" >/dev/null; done; \
+	tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	promtool="$(PROMTOOL)"; \
+	if ! command -v "$$promtool" >/dev/null 2>&1; then \
+		[ "$$promtool" = promtool ] || { echo "PROMTOOL executable not found: $$promtool" >&2; exit 1; }; \
+		os=$$(uname -s | tr '[:upper:]' '[:lower:]'); arch=$$(uname -m); \
+		case "$$arch" in x86_64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; esac; \
+		case "$$os-$$arch" in \
+			linux-amd64) checksum=e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a ;; \
+			linux-arm64) checksum=173389cc42bf09c4e6e54cb53fa07a5a835d7c261e14775d2183181d6e385d1c ;; \
+			darwin-amd64) checksum=5856d0c306e7d852d9a79788b20acb630501b3fab120b69f5317d6b0732dea57 ;; \
+			darwin-arm64) checksum=c17bc2c992f0b5515eebe2b4ccd626214f8e309a0fe6ec40ed13c42ec13d05fb ;; \
+			*) echo "Set PROMTOOL to an installed executable on $$os-$$arch" >&2; exit 1 ;; \
+		esac; \
+		archive="prometheus-3.5.0.$$os-$$arch"; \
+		wget -q -O "$$tmp_dir/prometheus.tar.gz" "https://github.com/prometheus/prometheus/releases/download/v3.5.0/$$archive.tar.gz"; \
+		printf '%s  %s\n' "$$checksum" "$$tmp_dir/prometheus.tar.gz" | sha256sum -c -; \
+		tar -xzf "$$tmp_dir/prometheus.tar.gz" -C "$$tmp_dir" "$$archive/promtool"; \
+		promtool="$$tmp_dir/$$archive/promtool"; \
+	fi; \
+	fixture=tests/glyph-contracts/postgresql; \
+	yq -y '.postgresql = .glyphs.postgresql | del(.glyphs) | .workload.enabled = false' \
+		"$$fixture/observability.yaml" > "$$tmp_dir/summon.yaml"; \
+	yq '.' "$$fixture/prometheus.yaml" > "$$tmp_dir/cases.json"; \
+	for namespace in tenant-blue tenant-red; do \
+		for consumer in kaster summon; do \
+			chart="$(KASTER_DIR)"; values="$$fixture/observability.yaml"; \
+			if [ "$$consumer" = summon ]; then chart="$(SUMMON_DIR)"; values="$$tmp_dir/summon.yaml"; fi; \
+			output="$$tmp_dir/$$namespace-$$consumer"; \
+			helm template "$(TEST_RELEASE)" "$$chart" --namespace "$$namespace" -f "$$values" | yq -s '.' > "$$output.json"; \
+			jq -r '.[] | select(.kind == "ConfigMap" and .metadata.labels.grafana_alert == "1") | .data[] | "---\n" + .' \
+				"$$output.json" | yq -s '.' > "$$output-alerts.json"; \
+			jq '[.[] | select(.kind == "ConfigMap" and .metadata.labels.grafana_dashboard == "1") | .data[] | fromjson]' \
+				"$$output.json" > "$$output-dashboards.json"; \
+			jq -e --arg namespace "$$namespace" --slurpfile alerts "$$output-alerts.json" \
+				--slurpfile dashboards "$$output-dashboards.json" -f "$$fixture/observability.jq" "$$output.json" >/dev/null; \
+			jq '[.[] | .groups[]?.rules[]?.uid] | sort' "$$output-alerts.json" > "$$output-uids.json"; \
+			echo "$(GREEN)PASS$(RESET) PostgreSQL contracts through $$consumer in $$namespace"; \
+		done; \
+		diff -u "$$tmp_dir/$$namespace-kaster-uids.json" "$$tmp_dir/$$namespace-summon-uids.json"; \
+	done; \
+	jq -e -s '([.[0][]] + [.[1][]]) as $$uids | ($$uids | length) == ($$uids | unique | length)' \
+		"$$tmp_dir/tenant-blue-kaster-uids.json" "$$tmp_dir/tenant-red-kaster-uids.json" >/dev/null; \
+	for consumer in kaster summon; do \
+		alerts="$$tmp_dir/tenant-blue-$$consumer-alerts.json"; \
+		jq -n --arg mode rules --slurpfile alerts "$$alerts" --slurpfile cases "$$tmp_dir/cases.json" \
+			-f "$$fixture/prometheus.jq" | yq -y '.' > "$$tmp_dir/rules.yaml"; \
+		jq -n --arg mode tests --slurpfile alerts "$$alerts" --slurpfile cases "$$tmp_dir/cases.json" \
+			-f "$$fixture/prometheus.jq" | yq -y '.' > "$$tmp_dir/prometheus-test.yaml"; \
+		"$$promtool" check rules "$$tmp_dir/rules.yaml"; \
+		"$$promtool" test rules "$$tmp_dir/prometheus-test.yaml"; \
+	done
+
+test-glyph-contracts: test-postgresql-observability
+	@command -v yq >/dev/null 2>&1 || { \
+		echo "$(RED)$(BOLD)Error:$(RESET) yq is required for Glyph contract tests" >&2; \
+		exit 1; \
+	}; \
+	tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	render_with_both_dispatchers() { \
+		fixture="$$1"; chart_key="$$2"; label="$$3"; \
+		$(HELM_TEST) ./$(KASTER_DIR) -f "$$fixture" > "$$tmp_dir/$$label-kaster.yaml"; \
+		yq -y --arg chart "$$chart_key" \
+			'.[$$chart] = (.glyphs[$$chart] | if type == "array" then to_entries | map({key: (.key | tostring), value: .value}) | from_entries else . end) | del(.glyphs) | .workload.enabled = false' \
+			"$$fixture" > "$$tmp_dir/$$label-summon-values.yaml"; \
+		$(HELM_TEST) ./$(SUMMON_DIR) \
+			-f "$$tmp_dir/$$label-summon-values.yaml" > "$$tmp_dir/$$label-summon.yaml"; \
+	}; \
+	provider_fixture="$(GLYPHS_DIR)/cert-manager/examples/cluster-issuer-providers.yaml"; \
+	legacy_fixture="$(GLYPHS_DIR)/certManager/examples/legacy-cluster-issuer.yaml"; \
+	test -f "$$provider_fixture"; \
+	test -f "$$legacy_fixture"; \
+	render_with_both_dispatchers "$$provider_fixture" cert-manager cluster-issuer-providers; \
+	for dispatcher in kaster summon; do \
+		output="$$tmp_dir/cluster-issuer-providers-$$dispatcher.yaml"; \
+		yq -s -e '([.[] | select(.kind == "ClusterIssuer")] | length == 3) and any(.[]; .kind == "ClusterIssuer" and .metadata.name == "letsencrypt-aws" and .spec.acme.solvers[0].dns01.route53.region == "eu-west-1" and .spec.acme.solvers[0].dns01.route53.hostedZoneID == "Z1234567890ABC" and .spec.acme.solvers[0].dns01.route53.role == "arn:aws:iam::123456789012:role/cert-manager" and .spec.acme.solvers[0].dns01.route53.accessKeyID == "AKIAEXAMPLE" and .spec.acme.solvers[0].dns01.route53.secretAccessKeySecretRef.name == "route53-credentials") and any(.[]; .kind == "ClusterIssuer" and .metadata.name == "letsencrypt-gcp" and .spec.acme.solvers[0].dns01.cloudDNS.project == "example-project" and .spec.acme.solvers[0].dns01.cloudDNS.serviceAccountSecretRef.name == "clouddns-credentials") and any(.[]; .kind == "ClusterIssuer" and .metadata.name == "letsencrypt-cloudflare" and .spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.name == "cloudflare-api-token")' "$$output" >/dev/null; \
+	done; \
+	echo "$(GREEN)PASS$(RESET) provider ClusterIssuers render through Kaster and Summon"; \
+	render_with_both_dispatchers "$$legacy_fixture" certManager legacy-cert-manager; \
+	for dispatcher in kaster summon; do \
+		output="$$tmp_dir/legacy-cert-manager-$$dispatcher.yaml"; \
+		yq -s -e '[.[] | select(.kind == "ClusterIssuer" and .metadata.name == "letsencrypt-legacy" and .spec.acme.solvers[0].dns01.route53.region == "us-east-1")] | length == 1' "$$output" >/dev/null; \
+	done; \
+	echo "$(GREEN)PASS$(RESET) deprecated certManager dispatch works through Kaster and Summon"; \
+	workflow_fixture="tests/glyph-contracts/workflow-trigger-generate-name.yaml"; \
+	workflow_output="$$tmp_dir/workflow-trigger-generate-name.yaml"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$$workflow_fixture" > "$$workflow_output"; \
+	yq -s -e 'any(.[]; .kind == "Sensor" and .spec.triggers[0].template.argoWorkflow.source.resource.metadata.generateName == "component-reading-" and .spec.triggers[0].template.argoWorkflow.parameters[0].src.dependencyName == "component-trigger" and .spec.triggers[0].template.argoWorkflow.parameters[0].src.dataTemplate == "runik-component-pr-gate-{{ .Input.body.repository.name }}-" and .spec.triggers[0].template.argoWorkflow.parameters[0].dest == "metadata.generateName" and .spec.triggers[0].template.argoWorkflow.parameters[1].dest == "spec.arguments.parameters.0.value")' "$$workflow_output" >/dev/null; \
+	yq -y '.lexicon."component-trigger".generateName.from = "body.repository.name"' \
+		"$$workflow_fixture" > "$$tmp_dir/workflow-trigger-invalid.yaml"; \
+	if $(HELM_TEST) ./$(KASTER_DIR) -f "$$tmp_dir/workflow-trigger-invalid.yaml" \
+		> "$$tmp_dir/workflow-trigger-invalid.out" 2>&1; then \
+		echo "$(RED)FAIL$(RESET) ambiguous workflow generateName was accepted" >&2; \
+		exit 1; \
+	fi; \
+	rg -Fq 'generateName requires exactly one of from, dataTemplate or value' \
+		"$$tmp_dir/workflow-trigger-invalid.out"; \
+	echo "$(GREEN)PASS$(RESET) workflow-trigger derives safe dynamic Workflow names"; \
+	render_with_both_dispatchers "$(GLYPHS_DIR)/external-secrets/examples/basic-push-secrets.yaml" external-secrets secret-roots; \
+	for dispatcher in kaster summon; do \
+		output="$$tmp_dir/secret-roots-$$dispatcher.yaml"; \
+		for provider in vault aws gcp; do \
+			key="acme/prod/default/$(TEST_NAMESPACE)/publics/rooted-$$provider-credentials"; \
+			if [ "$$provider" = vault ]; then key="kv/data/$$key"; fi; \
+			yq -s -e --arg name "rooted-$$provider-credentials" --arg key "$$key" \
+				'any(.[]; .kind == "ExternalSecret" and .metadata.name == $$name and .spec.dataFrom[0].extract.key == $$key) and any(.[]; .kind == "PushSecret" and .metadata.name == $$name and .spec.data[0].match.remoteRef.remoteKey == $$key)' "$$output" >/dev/null; \
+		done; \
+		yq -s -e 'any(.[]; .kind == "ExternalSecret" and .metadata.name == "rooted-explicit-key" and .spec.data[0].remoteRef.key == "shared/token") and any(.[]; .kind == "ExternalSecret" and .metadata.name == "rooted-explicit-extract" and .spec.dataFrom[0].extract.key == "shared/token") and any(.[]; .kind == "PushSecret" and .metadata.name == "rooted-explicit-push" and .spec.data[0].match.remoteRef.remoteKey == "shared/token") and any(.[]; .kind == "ExternalSecret" and .metadata.name == "rooted-chapter-data" and .spec.data[0].remoteRef.key == "acme/prod/default/publics/rooted-chapter-data") and any(.[]; .kind == "PushSecret" and .metadata.name == "rooted-chapter-data" and .spec.data[0].match.remoteRef.remoteKey == "acme/prod/default/publics/rooted-chapter-data")' "$$output" >/dev/null; \
+	done; \
+	echo "$(GREEN)PASS$(RESET) common roots agree across providers and both dispatchers; explicit keys remain authoritative"; \
+	for invalid in '""' 'null' 'false' '123' '[]' '{}' '"/root"' '"root/"' '"root//child"' '"root/../child"' '"root/*"' '"root/+"' '"root with spaces"'; do \
+		yq -y --argjson invalid "$$invalid" '.glyphs.common[0].store.pathRoot = $$invalid' \
+			"$(GLYPHS_DIR)/common/examples/secretpath-basic.yaml" > "$$tmp_dir/invalid-root.yaml"; \
+		if $(HELM_TEST) ./$(KASTER_DIR) -f "$$tmp_dir/invalid-root.yaml" > "$$tmp_dir/invalid-root.log" 2>&1; then \
+			echo "FAIL: invalid pathRoot $$invalid was accepted" >&2; exit 1; \
+		fi; \
+		rg -Fq 'secret-store.pathRoot' "$$tmp_dir/invalid-root.log"; \
+	done; \
+	echo "$(GREEN)PASS$(RESET) invalid secret roots fail during rendering"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$(GLYPHS_DIR)/postgresql/examples/db-multiple-vault-engines.yaml" > "$$tmp_dir/database-roots.yaml"; \
+	yq -s -e 'any(.[]; .kind == "DatabaseSecretEngineConfig" and .spec.path == "analytics-db/tenant/analytics/apps/multi-engine") and any(.[]; .kind == "VaultSecret" and .spec.vaultSecretDefinitions[0].path == "analytics-db/tenant/analytics/apps/multi-engine/creds/reports") and any(.[]; .kind == "Policy" and (.spec.policy | contains("sys/mounts/analytics-db/tenant/analytics/apps/multi-engine"))) and any(.[]; .kind == "DatabaseSecretEngineConfig" and .spec.path == "db/test-book/apps/multi-engine")' "$$tmp_dir/database-roots.yaml" >/dev/null; \
+	echo "$(GREEN)PASS$(RESET) database mounts, readers and policies share the selected store root"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$(GLYPHS_DIR)/vault/examples/path-variants.yaml" > "$$tmp_dir/vault-roots.yaml"; \
+	yq -s -e 'any(.[]; .kind == "Policy" and .metadata.name == "developer" and (.spec.policy | contains("kv/data/acme/prod/publics/*")))' "$$tmp_dir/vault-roots.yaml" >/dev/null; \
+	yq -y 'del(.lexicon[].pathRoot)' "$(GLYPHS_DIR)/vault/examples/path-variants.yaml" > "$$tmp_dir/vault-legacy.yaml"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$$tmp_dir/vault-legacy.yaml" > "$$tmp_dir/vault-legacy-output.yaml"; \
+	yq -s -e 'any(.[]; .kind == "Policy" and .metadata.name == "developer" and (.spec.policy | contains("secret/data/default/publics/*")))' "$$tmp_dir/vault-legacy-output.yaml" >/dev/null; \
+	echo "$(GREEN)PASS$(RESET) OIDC policies use the configured root/mount and retain legacy paths without it"; \
+	yq -y '(.lexicon[] | select(.type == "secret-store")).pathRoot = "acme/prod"' \
+		"$(GLYPHS_DIR)/s3/examples/bucket-basic.yaml" > "$$tmp_dir/s3-root.yaml"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$$tmp_dir/s3-root.yaml" > "$$tmp_dir/s3-root-output.yaml"; \
+	yq -s -e '[.[] | select(.kind == "VaultSecret") | .spec.vaultSecretDefinitions[].path] as $$reads | [.[] | select(.kind == "RandomSecret") | (.spec.path + .metadata.name)] as $$writes | ($$reads | length > 0) and ($$writes | length > 0) and all($$reads[]; startswith("kv/data/acme/prod/staging/")) and all($$writes[]; . as $$path | $$reads | index($$path) != null)' "$$tmp_dir/s3-root-output.yaml" >/dev/null; \
+	yq -y '(.lexicon[] | select(.type == "secret-store")).pathRoot = "acme/prod"' \
+		"$(GLYPHS_DIR)/s3/examples/versity-infrastructure.yaml" > "$$tmp_dir/s3-aggregator-root.yaml"; \
+	$(HELM_TEST) ./$(KASTER_DIR) -f "$$tmp_dir/s3-aggregator-root.yaml" > "$$tmp_dir/s3-aggregator-root-output.yaml"; \
+	yq -s -e 'any(.[]; .kind == "Policy" and (.spec.policy | contains("secret/data/acme/prod/+/publics/s3-identities-gateway-*")) and (.spec.policy | contains("secret/metadata/acme/prod/+/publics/s3-identities-gateway-*")))' "$$tmp_dir/s3-aggregator-root-output.yaml" >/dev/null; \
+	echo "$(GREEN)PASS$(RESET) S3 secret readers, writers and aggregator permissions use the common root"
+
+test-autoscaling:
+	@for tool in helm yq jq; do command -v "$$tool" >/dev/null; done; \
+	temporary=$$(mktemp -d); \
+	trap 'rm -rf "$$temporary"' EXIT; \
+	for chart in "$(SUMMON_DIR)" "$(MICROSPELL_DIR)"; do \
+		for workload in deployment statefulset; do \
+			kind=Deployment; [ "$$workload" != statefulset ] || kind=StatefulSet; \
+			render() { \
+				echo "Testing $$chart/$$workload: enabled=$$1 mode=$$2 replicas=$$3"; \
+				jq -n --arg workload "$$workload" --argjson enabled "$$1" \
+					--arg mode "$$2" --arg replicas "$$3" \
+					'{name: "scaling-test", image: {repository: "nginx", tag: "stable"},  service: {enabled: false}, serviceAccount: {enabled: false},  workload: {enabled: true, type: $$workload},  autoscaling: {enabled: $$enabled, minReplicas: 2, maxReplicas: 9,  targetCPUUtilizationPercentage: 65, targetMemoryUtilizationPercentage: 75,  labels: {scaling: "test"}, annotations: {owner: "test"}}}  | if $$mode == "omitted" then . elif $$mode == "unset" then .autoscaling.mode = null else .autoscaling.mode = $$mode end  | if $$replicas == "omitted" then . else .workload.replicas = ($$replicas | fromjson) end' \
+					> "$$temporary/values.json"; \
+				$(HELM_TEST) "$$chart" -f "$$temporary/values.json" > "$$temporary/render.yaml" 2> "$$temporary/error"; \
+			}; \
+			for mode in omitted unset hpa external invalid fixed ""; do \
+				for replicas in omitted null 4 0; do \
+					render false "$$mode" "$$replicas"; \
+					expected=$$replicas; \
+					if [ "$$replicas" = omitted ]; then \
+						expected=1; [ "$$chart" != "$(MICROSPELL_DIR)" ] || expected=2; \
+					elif [ "$$replicas" = null ]; then expected=1; fi; \
+					yq -s -e --arg kind "$$kind" --argjson replicas "$$expected" \
+						'([.[] | select(.kind == $$kind)] | length == 1) and  all(.[]; if .kind == $$kind then .spec.replicas == $$replicas else true end) and  all(.[]; .kind != "HorizontalPodAutoscaler")' "$$temporary/render.yaml" >/dev/null; \
+				done; \
+			done; \
+			for mode in omitted unset hpa external; do \
+				for replicas in null 4 0; do \
+					render true "$$mode" "$$replicas"; \
+					yq -s -e --arg kind "$$kind" \
+						'([.[] | select(.kind == $$kind)] | length == 1) and  all(.[]; if .kind == $$kind then (.spec | has("replicas") | not) else true end)' \
+						"$$temporary/render.yaml" >/dev/null; \
+					if [ "$$mode" = external ]; then \
+						yq -s -e --arg kind "$$kind" 'all(.[] | select(. != null); .kind == $$kind)' \
+							"$$temporary/render.yaml" >/dev/null; \
+					else \
+						minimum=2; [ "$$replicas" != 4 ] || minimum=4; \
+						yq -s -e --argjson minimum "$$minimum" \
+							'([.[] | select(.kind == "HorizontalPodAutoscaler")] | length == 1) and  any(.[]; .kind == "HorizontalPodAutoscaler" and .apiVersion == "autoscaling/v2" and  .metadata.labels.scaling == "test" and .metadata.annotations.owner == "test" and  .spec == {scaleTargetRef: {apiVersion: "apps/v1", kind: "Deployment", name: "scaling-test"},  minReplicas: $$minimum, maxReplicas: 9, metrics: [  {type: "Resource", resource: {name: "cpu", target: {type: "Utilization", averageUtilization: 65}}},  {type: "Resource", resource: {name: "memory", target: {type: "Utilization", averageUtilization: 75}}}]})' \
+							"$$temporary/render.yaml" >/dev/null; \
+					fi; \
+				done; \
+			done; \
+			for mode in invalid fixed ""; do \
+				if render true "$$mode" omitted; then \
+					echo "FAIL: enabled autoscaling accepted mode $$mode" >&2; exit 1; \
+				fi; \
+				grep -Fq "unsupported autoscaling.mode \"$$mode\": expected hpa or external" "$$temporary/error"; \
+			done; \
+		done; \
+	done; \
+	echo "PASS: Summon and Microspell autoscaling contracts"
+
+test-librarian:
+	@for tool in helm yq jq diff rg; do command -v "$$tool" >/dev/null; done; \
+	temporary=$$(mktemp -d); \
+	trap 'rm -rf "$$temporary"' EXIT; \
+	chart="$$temporary/librarian"; \
+	book="$$temporary/bookrack/kustomize-contract"; \
+	mkdir -p "$$chart" "$$book/apps"; \
+	cp -a "$(LIBRARIAN_DIR)/Chart.yaml" "$(LIBRARIAN_DIR)/values.yaml" "$(LIBRARIAN_DIR)/templates" "$(LIBRARIAN_DIR)/charts" "$(LIBRARIAN_DIR)/bookrack" "$$chart/"; \
+	cp tests/librarian/kustomize/index.yaml "$$book/index.yaml"; \
+	yq . tests/librarian/kustomize/operator.yaml > "$$temporary/fixture.json"; \
+	spell="$$book/apps/operator.yaml"; \
+	actual="$$temporary/application.json"; \
+	render() { \
+		helm template kustomize-contract "$$chart" > "$$temporary/render.yaml"; \
+		yq -s -S '.[] | select(.kind == "Application")' "$$temporary/render.yaml" > "$$actual"; \
+	}; \
+	cp "$$temporary/fixture.json" "$$spell"; \
+	render; \
+	jq -e --slurpfile fixture "$$temporary/fixture.json" -f tests/librarian/kustomize/sources.jq "$$actual" >/dev/null; \
+	echo "PASS: primary/rune options are preserved and isolated from other sources"; \
+	jq '.kustomize = {} | .runes[0].kustomize = {}' "$$temporary/fixture.json" > "$$spell"; \
+	render; \
+	jq -e ' .spec.sources[0].kustomize == {} and .spec.sources[2].kustomize == {} and (.spec.sources[0] | has("helm") | not) and (.spec.sources[2] | has("helm") | not) ' "$$actual" >/dev/null; \
+	echo "PASS: empty maps explicitly select Kustomize"; \
+	for mode in omitted false true; do \
+		jq 'del(.kustomize, .runes[0].kustomize)' "$$temporary/fixture.json" > "$$temporary/existing.json"; \
+		if [ "$$mode" = omitted ]; then \
+			cp "$$temporary/existing.json" "$$spell"; \
+		else \
+			jq --argjson flag "$$mode" '.appParams.noHelm = $$flag | .runes[0].appParams.noHelm = $$flag' "$$temporary/existing.json" > "$$spell"; \
+		fi; \
+		render; \
+		if [ "$$mode" = true ]; then baseline=noHelm; else baseline=default; fi; \
+		jq -S --arg baseline "$$baseline" '.[$$baseline]' tests/librarian/kustomize/existing-applications.json > "$$temporary/expected.json"; \
+		diff -u "$$temporary/expected.json" "$$actual"; \
+	done; \
+	echo "PASS: complete existing Applications are unchanged for omitted/false/true noHelm"; \
+	for scope in spell rune; do \
+		if [ "$$scope" = spell ]; then source_path='[]'; else source_path='["runes",0]'; fi; \
+		for invalid in chart missing-path null list string; do \
+			case "$$invalid" in \
+				chart) filter='setpath($$path + ["chart"]; "operator")'; error="requires a path source without chart" ;; \
+				missing-path) filter='delpaths([$$path + ["path"]])'; error="requires a path source without chart" ;; \
+				null) filter='setpath($$path + ["kustomize"]; null)'; error="must be a map" ;; \
+				list) filter='setpath($$path + ["kustomize"]; [])'; error="must be a map" ;; \
+				string) filter='setpath($$path + ["kustomize"]; "invalid")'; error="must be a map" ;; \
+			esac; \
+			jq --argjson path "$$source_path" "$$filter" "$$temporary/fixture.json" > "$$spell"; \
+			if helm template kustomize-contract "$$chart" > "$$temporary/error.log" 2>&1; then \
+				echo "FAIL: $$scope accepted $$invalid Kustomize source" >&2; \
+				exit 1; \
+			fi; \
+			rg -Fq "$$error" "$$temporary/error.log"; \
+			rg -Fq "apps/operator.yaml" "$$temporary/error.log"; \
+			if [ "$$scope" = rune ]; then rg -Fq "rune kustomize" "$$temporary/error.log"; fi; \
+		done; \
+	done; \
+	echo "PASS: invalid source combinations and types fail during rendering"; \
+	awk -v directory="$$temporary" ' $$0 == sprintf("%c%c%cyaml", 96, 96, 96) { block++; inside=1; next } $$0 == sprintf("%c%c%c", 96, 96, 96) { inside=0; next } inside { print > (directory "/example-" block ".yaml") } ' docs/usage/kustomize.md; \
+	checked=0; \
+	for example in "$$temporary"/example-*.yaml; do \
+		if ! yq -e 'has("name")' "$$example" >/dev/null; then continue; fi; \
+		yq . "$$example" > "$$spell"; \
+		render; \
+		jq -e --slurpfile spell "$$spell" ' $$spell[0] as $$definition | if $$definition | has("kustomize") then .spec.sources[0].kustomize == $$definition.kustomize and (.spec.sources[0] | has("helm") | not) else .spec.sources[-1].kustomize == $$definition.runes[0].kustomize and (.spec.sources[-1] | has("helm") | not) end ' "$$actual" >/dev/null; \
+		checked=$$((checked + 1)); \
+	done; \
+	test "$$checked" -eq 2; \
+	echo "PASS: documentation examples render with their declared source options"; \
+	book="$$temporary/bookrack/namespace-contract"; \
+	mkdir -p "$$book/apps"; \
+	yq . tests/librarian/namespaces.yaml > "$$temporary/namespaces.json"; \
+	jq '.index' "$$temporary/namespaces.json" > "$$temporary/namespace-index.json"; \
+	write_namespace_spells() { \
+		while IFS= read -r definition; do \
+			name=$$(printf '%s' "$$definition" | jq -r .name); \
+			printf '%s\n' "$$definition" > "$$book/apps/$$name.yaml"; \
+		done; \
+	}; \
+	jq -c '.cases[]' "$$temporary/namespaces.json" | while IFS= read -r case_data; do \
+		printf '%s\n' "$$case_data" > "$$temporary/namespace-case.json"; \
+		label=$$(jq -r .name "$$temporary/namespace-case.json"); \
+		echo "Testing namespace inheritance: $$label"; \
+		jq -s '.[0] * .[1].book' "$$temporary/namespace-index.json" "$$temporary/namespace-case.json" > "$$book/index.yaml"; \
+		if jq -e '.chapter != null' "$$temporary/namespace-case.json" >/dev/null; then \
+			jq '.chapter' "$$temporary/namespace-case.json" > "$$book/apps/index.yaml"; \
+		else \
+			rm -f "$$book/apps/index.yaml"; \
+		fi; \
+		jq -c --slurpfile case_data "$$temporary/namespace-case.json" \
+			'.sources[] * $$case_data[0].spell' "$$temporary/namespaces.json" | write_namespace_spells; \
+		helm template namespace-contract "$$chart" > "$$temporary/render.yaml"; \
+		yq -s -S '[.[] | select(.kind == "Application") | {name: .metadata.name, argocdNamespace: .metadata.namespace, server: .spec.destination.server, namespace: .spec.destination.namespace}] | sort_by(.name)' \
+			"$$temporary/render.yaml" > "$$actual"; \
+		jq -S --slurpfile case_data "$$temporary/namespace-case.json" \
+			'[.sources[] | {name: ("app-" + .name + "-test"), argocdNamespace: "argocd-control", server: "https://kubernetes.default.svc", namespace: ($$case_data[0].expected // .name)}] | sort_by(.name)' \
+			"$$temporary/namespaces.json" > "$$temporary/expected.json"; \
+		diff -u "$$temporary/expected.json" "$$actual"; \
+	done; \
+	echo "PASS: namespace precedence for Summon, chart, Helm path, and Kustomize sources"; \
+	jq '.index | .namespace = "book-ns" | .chapters = ["apps", "inherited", "other"]' \
+		"$$temporary/namespaces.json" > "$$book/index.yaml"; \
+	jq -n '{namespace: "chapter-ns"}' > "$$book/apps/index.yaml"; \
+	jq -c '.sources[] + {namespace: "spell-ns"}' "$$temporary/namespaces.json" | write_namespace_spells; \
+	jq -n '{name: "sibling"}' > "$$book/apps/sibling.yaml"; \
+	for chapter in inherited other; do \
+		mkdir -p "$$book/$$chapter"; \
+		jq -n --arg name "$$chapter" '{name: $$name}' > "$$book/$$chapter/service.yaml"; \
+	done; \
+	jq -n '{namespace: "other-ns"}' > "$$book/other/index.yaml"; \
+	helm template namespace-contract "$$chart" > "$$temporary/render.yaml"; \
+	yq -s -S '[.[] | select(.kind == "Application") | {key: .metadata.name, value: .spec.destination.namespace}] | from_entries' \
+		"$$temporary/render.yaml" > "$$actual"; \
+	jq -n -S '{"app-chart-test": "spell-ns", "app-kustomize-test": "spell-ns", "app-path-test": "spell-ns", "app-summon-test": "spell-ns", "app-sibling-test": "chapter-ns", "app-inherited-test": "book-ns", "app-other-test": "other-ns"}' \
+		> "$$temporary/expected.json"; \
+	diff -u "$$temporary/expected.json" "$$actual"; \
+	echo "PASS: namespace overrides do not leak across spells or chapters";
+
 ci: verify
+	@$(MAKE) --no-print-directory test-component-candidate
+	@$(MAKE) --no-print-directory test-glyph-name-checker
+	@$(MAKE) --no-print-directory check-glyph-names
+	@$(MAKE) --no-print-directory test-glyph-contracts
+	@$(MAKE) --no-print-directory test-autoscaling
+	@$(MAKE) --no-print-directory test-librarian
 	@$(MAKE) --no-print-directory smoke
 	@$(MAKE) --no-print-directory test all
 	@$(MAKE) --no-print-directory test integration
 	@$(MAKE) --no-print-directory test covenant
+
+# The caller checks out the candidate component at its canonical Runik path.
+# For Glyphs it must also place the same commit in every consumer mirror.
+# A consumer dependency update prepares the same future Glyphs set locally;
+# it never changes recorded gitlinks or merges any consumer repositories.
+# Snapshot regeneration is disposable in this mode: component repositories do
+# not own Runik's aggregate snapshots, which component-sync updates after merge.
+test-component-candidate:
+	@python3 tests/component-candidate/test_candidate.py
+
+prepare-component-candidate:
+	@component="$(COMPONENT)"; \
+	case "$$component" in \
+		glyphs|librarian) exit 0 ;; \
+		covenant) component_path="$(COVENANT_DIR)" ;; \
+		summon) component_path="$(SUMMON_DIR)" ;; \
+		kaster) component_path="$(KASTER_DIR)" ;; \
+		tarot) component_path="$(TAROT_DIR)" ;; \
+		microspell) component_path="$(MICROSPELL_DIR)" ;; \
+		*) echo "Unsupported Runik component: $$component" >&2; exit 1 ;; \
+	esac; \
+	candidate_glyphs=$$(git -C "$$component_path" ls-tree HEAD charts | awk '$$1 == "160000" {print $$3}'); \
+	test -n "$$candidate_glyphs" || { echo "$$component must pin its Glyphs dependency" >&2; exit 1; }; \
+	test "$$(git -C "$$component_path/charts" rev-parse HEAD)" = "$$candidate_glyphs" || { \
+		echo "$$component Glyphs checkout does not match its committed dependency" >&2; exit 1; \
+	}; \
+	canonical_glyphs=$$(git -C "$(GLYPHS_DIR)" rev-parse HEAD); \
+	if [ "$$candidate_glyphs" = "$$canonical_glyphs" ]; then exit 0; fi; \
+	for mirror in $(GLYPH_MIRRORS); do \
+		if [ "$$mirror" = "$$component_path/charts" ]; then continue; fi; \
+		test "$$(git -C "$$mirror" rev-parse HEAD)" = "$$canonical_glyphs" || { \
+			echo "Unrelated Glyphs mismatch in $$mirror; refusing candidate preparation" >&2; exit 1; \
+		}; \
+	done; \
+	git -C "$(GLYPHS_DIR)" fetch --quiet --no-tags origin \
+		+refs/heads/upstream:refs/remotes/origin/upstream; \
+	git -C "$(GLYPHS_DIR)" merge-base --is-ancestor "$$candidate_glyphs" refs/remotes/origin/upstream || { \
+		echo "Candidate Glyphs dependency must already be merged into origin/upstream" >&2; exit 1; \
+	}; \
+	git -C "$(GLYPHS_DIR)" merge-base --is-ancestor "$$canonical_glyphs" "$$candidate_glyphs" || { \
+		echo "Candidate Glyphs dependency must advance Runik's current dependency" >&2; exit 1; \
+	}; \
+	for glyph_path in "$(GLYPHS_DIR)" $(GLYPH_MIRRORS); do \
+		git -C "$$glyph_path" diff --quiet HEAD -- . || { \
+			echo "Dirty Glyphs checkout in $$glyph_path; refusing candidate preparation" >&2; exit 1; \
+		}; \
+	done; \
+	for glyph_path in "$(GLYPHS_DIR)" $(GLYPH_MIRRORS); do \
+		git -C "$$glyph_path" fetch --quiet --no-tags "$(abspath $(GLYPHS_DIR))" "$$candidate_glyphs"; \
+		git -C "$$glyph_path" checkout --quiet --detach "$$candidate_glyphs"; \
+	done; \
+	echo "Prepared future Runik Glyphs set at $$candidate_glyphs for $$component"
+
+verify-component-candidate:
+	@component="$(COMPONENT)"; \
+	case "$$component" in \
+		librarian) component_path="$(LIBRARIAN_DIR)" ;; \
+		covenant) component_path="$(COVENANT_DIR)" ;; \
+		summon) component_path="$(SUMMON_DIR)" ;; \
+		kaster) component_path="$(KASTER_DIR)" ;; \
+		tarot) component_path="$(TAROT_DIR)" ;; \
+		microspell) component_path="$(MICROSPELL_DIR)" ;; \
+		glyphs) component_path="$(GLYPHS_DIR)" ;; \
+		*) \
+			echo "$(RED)$(BOLD)Error:$(RESET) COMPONENT must be one of: glyphs librarian covenant summon kaster tarot microspell" >&2; \
+			exit 1; \
+			;; \
+	esac; \
+	test -d "$$component_path" || { \
+		echo "$(RED)$(BOLD)Error:$(RESET) candidate path is missing: $$component_path" >&2; \
+		exit 1; \
+	}; \
+	case "$$component" in \
+		librarian|covenant) \
+			test "$$(git -C "$$component_path" ls-files -s -- bookrack | awk 'NR == 1 {print $$1}')" = 120000; \
+			test "$$(git -C "$$component_path" show :bookrack)" = ../bookrack \
+				|| { echo "$$component must preserve bookrack -> ../bookrack" >&2; exit 1; }; \
+			;; \
+	esac; \
+	canonical_glyphs=$$(git -C "$(GLYPHS_DIR)" rev-parse HEAD); \
+	for mirror in $(GLYPH_MIRRORS); do \
+		mirror_glyphs=$$(git -C "$$mirror" rev-parse HEAD); \
+		if [ "$$mirror_glyphs" != "$$canonical_glyphs" ]; then \
+			echo "$(RED)FAIL$(RESET) $$mirror is at $$mirror_glyphs, expected $$canonical_glyphs" >&2; \
+			exit 1; \
+		fi; \
+	done; \
+	echo "$(GREEN)PASS$(RESET) testing Runik with candidate $$component at $$(git -C "$$component_path" rev-parse --short HEAD)"
+
+ci-component-candidate: prepare-component-candidate
+	@$(MAKE) --no-print-directory verify-component-candidate COMPONENT="$(COMPONENT)"
+	@$(MAKE) --no-print-directory test-component-candidate
+	@$(MAKE) --no-print-directory test-glyph-name-checker
+	@$(MAKE) --no-print-directory check-glyph-names
+	@$(MAKE) --no-print-directory test-glyph-contracts
+	@$(MAKE) --no-print-directory test-autoscaling
+	@$(MAKE) --no-print-directory test-librarian
+	@$(MAKE) --no-print-directory snapshot all
+	@$(MAKE) --no-print-directory test all
+	@$(MAKE) --no-print-directory smoke
+	@$(MAKE) --no-print-directory test integration
+	@$(MAKE) --no-print-directory test covenant
+
+ci-glyphs-candidate:
+	@$(MAKE) --no-print-directory ci-component-candidate COMPONENT=glyphs
 
 # ============================================================================
 # List

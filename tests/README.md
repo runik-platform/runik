@@ -1,25 +1,53 @@
 # Runik test stack
 
 Runik is an aggregate repository, so its tests validate both each renderer and
-the wiring between pinned submodules. The complete local and CI entry point is:
+the wiring between pinned submodules. CI runs the following target. Use it
+locally to reproduce the full CI run.
 
 ```bash
 make ci
 ```
 
+For local changes, choose a check based on the affected behavior. [Local validation guidance](../AGENTS.md#10-make-targets)
+
 ## Coverage matrix
 
 | Gate | Coverage | Failure signal |
 |---|---|---|
+| `make test-glyph-name-checker` + `make check-glyph-names` | Runik's global template/chart-name checker, its positive/negative fixtures, and the selected `GLYPHS_DIR` checkout | A duplicate name, a missing checker dependency, or a checker regression |
+| `make test-glyph-contracts` | Provider and legacy cert-manager contracts through both dispatchers, plus dynamic Argo Workflow naming | A cross-consumer compatibility or trigger-contract regression |
+| `make test-autoscaling` | Deployment/StatefulSet replica ownership through Summon and Microspell: omitted/positive/zero replicas, HPA defaults and parameters, external mode, invalid enabled modes | Render or scaling-contract regression |
+| `make test-librarian` | Librarian source contracts: Kustomize options, primary/rune/trinket isolation, empty maps, invalid definitions and unchanged complete Applications for existing sources | A renderer-selection, source-routing or compatibility regression |
 | `make verify` | Recursive submodules, clean submodule worktrees, identical glyph mirror commits, fixture/snapshot inventory | Missing, uninitialized, dirty, divergent, or orphaned inputs |
 | `make smoke` | Direct kaster, microspell, and Tarot examples; semantic output from every glyph example | Helm error, empty trinket output, or an untracked empty glyph render |
 | `make test all` | Canonical glyphs through kaster, summon examples, and librarian books | Render error, missing snapshot, or golden diff |
 | `make test integration` | Aggregate-repository Librarian bootstrap followed by real Kaster, Summon, Microspell, Tarot, and Covenant renders | Broken bootstrap, inheritance, source routing, Lexicon resolution, or child chart contract |
 | `make test covenant` | Direct Covenant compilation, application-contract scanning, and deterministic alphabetical principal sharding | Broken IAM contract, cross-book scan, or nondeterministic partitioning |
 
-The snapshot suite currently covers 150 canonical glyph fixtures, 39 summon
-fixtures, and 1 deployable book. Kaster and the two trinkets add 19 direct
-smoke renders.
+`make ci-component-candidate COMPONENT=<name>` is the contract used after a
+component PR commit has been checked out at its canonical Runik path. Supported
+components are `glyphs`, `librarian`, `covenant`, `summon`, `kaster`, `tarot`,
+and `microspell`. For Glyphs the caller installs the same candidate in every
+consumer mirror. Runik verifies that all mirrors agree, checks global Glyph
+names, regenerates snapshots in the disposable checkout, and executes all
+aggregate render, smoke, integration, and Covenant tests.
+
+Candidate CI intentionally skips normal top-level gitlink cleanliness checks:
+the prospective commit cannot match Runik's recorded gitlink before it merges.
+It still validates component-specific invariants such as the Librarian and
+Covenant `bookrack` symlinks. `make ci-glyphs-candidate` remains as a
+compatibility alias for `COMPONENT=glyphs`.
+
+The Runik Makefile discovers the Glyphs and Summon examples and reads
+deployable books from `tests/librarian-books.txt`. Use `make list glyphs`,
+`make list examples <name>`, or `make list books` to inspect the current
+inventory. `make verify` checks it against the tracked snapshots. [Makefile](../Makefile)
+
+Librarian source-contract fixtures live in `tests/librarian/kustomize`; the
+assertions are part of Runik's `make test-librarian` target. They render the
+selected `LIBRARIAN_DIR` in a temporary book and compare complete Applications
+with baselines from before Kustomize support. Both normal and candidate CI run
+this gate. No test harness or fixtures are added to the Librarian repository.
 
 ## Book fixtures
 
@@ -67,16 +95,14 @@ use the defaults.
 Snapshot updates are atomic: a failed render leaves the previous golden file
 untouched and returns a non-zero status.
 
-```bash
-make snapshot glyph vault policy-role
-make test glyph vault policy-role
-make snapshot all
-make test all
-```
+For example, `make test glyph vault policy-role.yaml` compares that fixture
+with its baseline. If its expected output changes, inspect the render and use
+`make snapshot glyph vault policy-role.yaml` to update that baseline.
 
-Review every golden diff before committing it. `make verify` rejects missing
-and orphaned snapshots, so deleting or renaming a fixture requires the matching
-snapshot change.
+Review every golden diff before committing it. When a glyph example is deleted
+or renamed, `make snapshot all` removes its old `.yaml.snap` after all renders
+succeed. `make verify` checks for missing and orphaned snapshots across glyphs,
+Summon and books.
 
 ## Empty glyph renders
 
@@ -92,28 +118,38 @@ introduces it.
 
 ## Toolchain
 
-The suite requires Bash, GNU Make, Git, Helm, GNU diffutils, jq, ripgrep, and
-the Python `yq` package. Covenant relies on Python `yq` syntax (`-y`, `-S`, and
-`env`) and is not compatible with the unrelated Go `yq` binary.
+The suite requires Bash, GNU Make, Git, Helm, diffutils, jq, ripgrep with PCRE2
+support, and the Python `yq` package. Covenant relies on Python `yq` syntax
+(`-y`, `-S`, and `env`) and is not compatible with the unrelated Go `yq`
+binary. Its shell assertions use the portable `base64 -d` and `find -print`
+forms so the same contract runs in both Debian-based Forgejo jobs and the
+Alpine-based Argo PR gates.
 
-The Forgejo workflow pins:
+The repository-owned Argo workflow in `.argo/tests.yaml` pins:
 
-- Helm `3.20.2`, verified with its upstream SHA-256 checksum.
+- Helm `3.20.2` in the Alpine/Helm test image, pinned by OCI digest.
 - Python `yq` `3.4.3`.
-- Forgejo checkout v6 by commit SHA.
-- The Node 24 Bookworm job image by OCI digest.
+- The Node 24 Bookworm status-reporting image by OCI digest.
 
-## Forgejo setup
+## Repository workflow
 
-The aggregate repository and all nested submodules are private SSH repositories.
-Configure these repository or organization secrets before enabling the workflow:
+`.argo/workflowConfig.yaml` selects the native test Workflow for Forgejo pushes
+and pull requests. The shared discovery pipeline submits it in
+`repository-workflows`; it fetches the exact `ci-sha`, verifies the checkout,
+initializes every pinned submodule and runs `make ci` with a 15-minute test
+timeout. Each execution uses a disposable `emptyDir` workspace.
 
-- `RUNIK_SUBMODULE_SSH_KEY`: a read-only machine/deploy private key accepted by
-  every Runik submodule repository.
-- `RUNIK_SUBMODULE_KNOWN_HOSTS`: the pinned SSH host-key line for
-  your Forgejo host, for example `[git.example.com]:2222`.
+The Workflow consumes the namespace's existing `forgejo-git-ssh` Secret
+(`id_ed25519`) and `repository-workflow-known-hosts` ConfigMap
+(`ssh_known_hosts`) for private recursive checkout with strict SSH host-key
+verification. `forgejo-token` (`token`) is mounted only as an environment
+variable in the status-reporting containers. No Forgejo Actions runner or
+repository Actions secrets are needed.
 
-The workflow targets the conventional Forgejo runner label `docker`. If the
-instance uses another label, change `runs-on` to the label shown under the
-repository's Actions runner settings. Keep the runner containerized and
-unprivileged; this suite does not need a Docker socket or cluster credentials.
+The initial step reports pending; the exit handler reports success or failure,
+including checkout and toolchain failures, with a link to the Argo execution.
+Status contexts remain `Runik tests / test (push)` and
+`Runik tests / test (pull_request)`. The namespace's default ServiceAccount
+already has Argo executor permissions; the suite needs no additional RBAC,
+registry credentials or Docker socket. GitHub release publication remains in
+`.github/workflows/publish-release.yaml`.

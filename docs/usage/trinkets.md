@@ -120,7 +120,7 @@ service:
   enabled: true
 ```
 
-Microspell defaults to two replicas (summon defaults to one) and adds service-level Istio mesh features once `service.enabled` is true. Autoscaling is disabled by default; when enabled its defaults are 2-10 replicas at 70% CPU. Probe, Prometheus annotation, and SecurityContext fields are not auto-populated -- add them to the spell the same way you would with summon.
+Microspell defaults to two replicas (summon defaults to one) and adds service-level Istio mesh features once `service.enabled` is true. Autoscaling is disabled by default and preserves an explicit `workload.replicas: 0`. When enabled, Deployment and StatefulSet omit `spec.replicas`. The optional `autoscaling.mode` defaults to `hpa` (2-10 replicas at 70% CPU); `external` creates no autoscaler resources and requires a separately configured controller. Unknown modes fail rendering only when autoscaling is enabled. The contract is shared with [Summon](summon.md#autoscaling). Probe, Prometheus annotation, and SecurityContext fields are not auto-populated -- add them to the spell the same way you would with summon.
 
 ### Microspell Configuration
 
@@ -167,7 +167,7 @@ When you deploy a microspell, you get the following resources without specifying
 | **Deployment** | 2 replicas, rolling update strategy |
 | **Service** | ClusterIP on configured ports |
 | **ServiceAccount** | Created with automount enabled |
-| **HPA** | Disabled by default; when enabled, defaults to 2-10 replicas at 70% CPU |
+| **Autoscaling** | Disabled by default; `mode: hpa` uses existing HPA defaults, `mode: external` delegates to a separately configured controller |
 | **Istio VirtualService** | Auto-generated when `service.enabled` is true (internal); a second external VirtualService when `service.external` is true |
 | **Vault Policy** | Auto-generated when `infrastructure.prolicy.enabled` is true |
 
@@ -197,8 +197,9 @@ dataStore:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `envs` | map | `{}` | Environment variables (key-value pairs) |
-| `workload.replicas` | int | `2` | Number of replicas |
-| `autoscaling.enabled` | bool | `false` | Create an HPA |
+| `workload.replicas` | int | `2` | Replicas when autoscaling is disabled; explicit `0` is preserved |
+| `autoscaling.enabled` | bool | `false` | Omit workload replicas and delegate scaling |
+| `autoscaling.mode` | string | `hpa` | `hpa` or `external`; ignored when disabled |
 | `autoscaling.minReplicas` | int | `2` | Minimum replicas for HPA |
 | `autoscaling.maxReplicas` | int | `10` | Maximum replicas for HPA |
 | `autoscaling.targetCPUUtilizationPercentage` | int | `70` | CPU target for autoscaling |
@@ -213,7 +214,7 @@ dataStore:
 
 All standard summon fields (`resources`, `probes`, `volumes`, `configMaps`, `initContainers`, `sideCars`, `nodeSelector`, `tolerations`, `affinity`, etc.) are also available and are passed through to summon unchanged.
 
-`glyphs:` is not a microspell-specific field. It is a spell-level key routed by librarian to kaster as a separate ArgoCD source; any spell (summon, microspell, or external-chart based) can use it in the same way. See the root CLAUDE.md `§4` for details.
+`glyphs:` is not a microspell-specific field. It is a spell-level key routed by librarian to kaster as a separate ArgoCD source; any spell (summon, microspell, or external-chart based) can use it in the same way. See the root AGENTS.md `§4` for details.
 
 ---
 

@@ -1,0 +1,91 @@
+---
+# Source: kaster/charts/aws/templates/ack/ack-ec2-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-kms-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-rds-controller.tpl
+# 
+#
+---
+# Source: kaster/charts/aws/templates/ack/ack-s3-controller.tpl
+# 
+#
+---
+# Source: kaster/templates/kaster.yaml
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdInstance
+metadata:
+  name: default
+  namespace: netbird
+  labels:
+    app.kubernetes.io/name: test
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/part-of: netbird
+    app.kubernetes.io/managed-by: Helm
+    spelbook: netbird
+    chapter: networking
+    spell: kaster
+spec:
+  bootstrap:
+    accountName: example
+    adoptionCredentialSecretRef:
+      key: NB_API_KEY
+      name: netbird-current-owner-api-key
+    credentialSecretRef:
+      key: NB_API_KEY
+      name: netbird-owner-api-key
+    ownerName: operator-owner
+  dashboard:
+    image:
+      repository: netbirdio/dashboard
+      tag: v2.92.0
+    mode: managed
+  database:
+    secretRef:
+      key: uri
+      name: netbird-pg-app
+  encryptionKeySecretRef:
+    key: key
+    name: netbird-encryption
+  lifecycle:
+    deletionPolicy: Retain
+  management:
+    image:
+      digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      repository: harbor.int.example/the-yaml-life/netbird-fork
+    mode: managed
+    publicEndpoint: https://netbird.example.com
+  oidc:
+    clientID: netbird
+    issuer: https://sso.example.com/realms/netbird
+    redirectURLs:
+    - https://netbird.example.com/auth/callback
+  relays:
+  - image:
+      repository: netbirdio/relay
+      tag: 0.78.2
+    location: fwck
+    mode: managed
+    name: primary
+    publicEndpoint: rel://netbird.example.com:33080
+  signals:
+  - image:
+      repository: netbirdio/signal
+      tag: 0.78.2
+    location: fwck
+    mode: managed
+    name: primary
+    publicEndpoint: grpc://netbird.example.com:33000
+  stunTurns:
+  - endpoints:
+    - stun:netbird.example.com:3478
+    image:
+      repository: coturn/coturn
+      tag: 4.6.3
+    location: fwck
+    mode: managed
+    name: primary

@@ -26,13 +26,11 @@ charts/glyphs/my-glyph/
   examples/        # Test input YAML files for snapshot testing
 ```
 
-Because `charts/kaster/charts` is a git submodule of the same `glyphs.git`
-repository, your new glyph becomes visible to kaster once the change is
-committed and pushed in the canonical `charts/glyphs/` submodule and the
-kaster submodule reference is bumped. For local development, that kaster bump
-is enough to test the `glyphs:` dispatcher end to end. It is **not** the full
-distribution workflow: a release must also bump summon, microspell, tarot and
-covenant as described in Step 7.
+Run the Make commands below from the Runik root. They read examples from
+`charts/glyphs/` and load templates from `charts/kaster/charts/`. When testing
+a Glyphs change locally, check out the candidate Glyphs commit at both paths
+in a disposable Runik checkout. The synchronization Workflow updates the
+recorded gitlinks after merge as described in Step 7.
 
 ## Step 2: Create Chart.yaml
 
@@ -53,19 +51,24 @@ Create `charts/glyphs/my-glyph/templates/_my-glyph.tpl`. This file contains one 
 
 ### The define/end Pattern
 
-Every glyph template follows the same pattern:
+The dispatcher calls the resource template below. Put the accompanying
+`my-glyph.metadata` helper from [Using Common Helpers](#using-common-helpers)
+in the same chart. The third argument is the resource name, so a glyph that
+emits several objects can give each one its own name.
 
 ```go
 {{- define "my-glyph.myType" -}}
 {{- $root := index . 0 -}}
 {{- $definition := index . 1 -}}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $definition) -}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $definition.name }}
+  {{- include "my-glyph.metadata" (list $root $definition $name) | nindent 2 }}
 data:
   config: {{ $definition.config | quote }}
+{{- printf "\n" -}}
 {{- end -}}
 ```
 
@@ -84,34 +87,108 @@ So when a spell contains `type: myType` under the `my-glyph` key, kaster calls `
 | Parameter | Access | Contents |
 |-----------|--------|----------|
 | `$root` | `index . 0` | The full Helm root context. Contains `.Values.lexicon`, `.Values.spellbook`, `.Values.chapter`, `.Release`, and all other Helm objects. Use this to access the runic indexer, common labels, and shared configuration. |
-| `$definition` | `index . 1` | The glyph configuration from the spell, with `name` automatically injected by kaster (set to the YAML key name). Contains every field the user wrote under this glyph entry. |
+| `$definition` | `index . 1` | The glyph configuration from the spell. Kaster and Summon use the YAML key as `name` when no nonempty explicit `name` is supplied. Contains every field the user wrote under this glyph entry. |
 
 **The `---` separator**: Always emit a YAML document separator before each resource. Kaster concatenates output from all glyphs, and the separator ensures valid multi-document YAML.
 
-### Using Common Helpers
+### Resource Names with Common
 
-You have access to the same helpers available in all runik charts:
+Choose the shared helper according to the identity you are constructing:
+
+| Helper | Arguments | Contract |
+|--------|-----------|----------|
+| `common.glyph.name` | `dict "root" $root "glyph" $definition "options" $options` | Compose a glyph resource name; `glyph` and `options` are optional. |
+| `common.name` | `$root` | Existing workload identity: local `Values.namePrefix` + `Values.name` (or `Release.Name`) + local `Values.nameSuffix`, lowercased, truncated to 54 characters, with a trailing `-` removed. |
+| `common.name.normalize` | `dict "name" $name "suffix" "-cert" "maxLength" 63` | Normalize an already composed name; `suffix` and `maxLength` are optional. |
+
+`common.glyph.name` composes the name in this order. Affixes supply their own
+separators; the helper does not insert them:
+
+```text
+options.prefix + glyph.namePrefix + base + glyph.nameSuffix + options.suffix
+```
+
+The base is the nonempty `glyph.name`, falling back to `common.name($root)`.
+Both dispatchers normally provide the glyph entry's key as `name`, so the
+workload fallback mainly serves direct helper calls. Root prefixes and suffixes
+belong to that workload fallback; they are not also added to an explicit glyph
+name. `nameOverride` and `global.namePrefix` / `global.nameSuffix` are not
+supported by these helpers.
+
+For example, the existing
+[glyph naming fixture](../../charts/glyphs/common/examples/glyph-names.yaml)
+contains this composition:
 
 ```go
-{{- define "my-glyph.myType" -}}
+{{- $glyph := dict "name" "api" "namePrefix" "prod-" "nameSuffix" "-internal" -}}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $glyph
+    "options" (dict "prefix" "platform-" "suffix" "-cert")) -}}
+{{/* $name = platform-prod-api-internal-cert */}}
+```
+
+For a glyph that emits several resources, compute each name once and reuse it
+in both `metadata.name` and references such as `claimName` or `secretName`.
+The Redis example below computes its PVC name with `options.suffix: "-data"`
+and uses that value in the Deployment's volume and the PVC metadata.
+
+**Normalization is explicit.** By default, an explicit glyph name retains its
+case, punctuation and length; only the requested affixes are added. When the
+resource's contract calls for a DNS label, pass `options.normalize: true`:
+
+```go
+{{- $name := include "common.glyph.name" (dict "root" $root
+    "glyph" (dict "name" "My_API.Example")
+    "options" (dict "normalize" true "suffix" "-CERT")) -}}
+{{/* $name = my-api-example-cert */}}
+```
+
+Normalization lowercases, replaces runs outside `a-z`, `0-9` and `-` with `-`,
+and trims edge hyphens. The default limit is 63 characters; `maxLength` accepts
+10–63 and requires `normalize: true` when passed through `common.glyph.name`.
+Long names reserve space for the normalized suffix and become
+`<truncated stem>-<8 hex SHA256><suffix>`. The hash includes the complete
+original name and suffix. An empty normalized result or a suffix that leaves
+no room for the stem and hash fails the render. For an already composed name,
+call `common.name.normalize` directly instead of copying this algorithm.
+
+Adopting the helper in an existing glyph must preserve its current resource
+names, selectors and references. SQL identifiers, bucket identities and
+external references retain their own contracts; normalization is not a global
+rename policy. The new helper also does not add affix support to templates
+that have not adopted it.
+
+The existing fixture covers explicit names, affix order, workload and release
+fallbacks, optional normalization and long names. Its snapshot is
+[`tests/snapshots/glyphs/common/glyph-names.yaml.snap`](../../tests/snapshots/glyphs/common/glyph-names.yaml.snap).
+When changing that contract, use the existing focused check:
+
+```bash
+make test glyph common glyph-names.yaml
+```
+
+When adopting it in a glyph, extend that glyph's existing examples for the
+affected names and references and run the corresponding focused test.
+
+### Using Common Helpers
+
+Use the same shared label and annotation helpers as the Forgejo glyph.
+`common.all.labels` includes the platform labels for the current root context.
+`common.annotations.map` combines the root annotations with resource-local and
+generated annotations, in that order. Render each map once so an override
+produces one YAML key. [Forgejo metadata helper](../../charts/glyphs/forgejo/templates/_helpers.tpl)
+
+```go
+{{- define "my-glyph.metadata" -}}
 {{- $root := index . 0 -}}
 {{- $definition := index . 1 -}}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ default (include "common.name" $root) $definition.name }}
-  labels:
-    {{- include "common.labels" $root | nindent 4 }}
-    {{- with $definition.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- with $definition.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-data:
-  config: {{ $definition.config | quote }}
+{{- $labels := include "common.all.labels" $root | fromYaml -}}
+name: {{ index . 2 | quote }}
+labels:
+  {{- mergeOverwrite $labels (default dict $definition.labels) | toYaml | nindent 2 }}
+{{- with (include "common.annotations.map" (list $root (default dict $definition.annotations) dict) | fromJson) }}
+annotations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
 {{- end -}}
 ```
 
@@ -122,13 +199,16 @@ If your glyph needs to discover infrastructure (gateways, issuers, vault servers
 ```go
 {{- $results := get (include "runic-system.runic-indexer" (list $root.Values.lexicon (default dict $definition.selector) "my-type" $root.Values.chapter.name) | fromJson) "results" }}
 {{- range $result := $results }}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $definition
+    "options" (dict "suffix" (printf "-%s" $result.name))) }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $definition.name }}-{{ $result.name }}
+  {{- include "my-glyph.metadata" (list $root $definition $name) | nindent 2 }}
 data:
   endpoint: {{ $result.endpoint }}
+{{- printf "\n" -}}
 {{- end }}
 ```
 
@@ -142,26 +222,30 @@ A single glyph chart can define multiple types. Create separate `define` blocks 
 {{- define "my-glyph.typeA" -}}
 {{- $root := index . 0 -}}
 {{- $definition := index . 1 -}}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $definition) -}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $definition.name }}
+  {{- include "my-glyph.metadata" (list $root $definition $name) | nindent 2 }}
 data:
   value: {{ $definition.value | quote }}
+{{- printf "\n" -}}
 {{- end -}}
 
 {{- define "my-glyph.typeB" -}}
 {{- $root := index . 0 -}}
 {{- $definition := index . 1 -}}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $definition) -}}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ $definition.name }}
+  {{- include "my-glyph.metadata" (list $root $definition $name) | nindent 2 }}
 type: Opaque
 stringData:
   key: {{ $definition.key | quote }}
+{{- printf "\n" -}}
 {{- end -}}
 ```
 
@@ -237,16 +321,13 @@ glyphs:
 
 ## Step 5: Create Expected Output for Snapshot Testing
 
-Snapshot testing validates that your template produces the expected Kubernetes resources. Generate the expected output by rendering kaster with your example file:
+Render the example through kaster using the release and namespace set by the Runik Makefile.
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/my-glyph/examples/basic.yaml
+make render glyph my-glyph basic.yaml
 ```
 
-Review the output. If it matches what you expect, save it as the snapshot baseline. If it does not, adjust your template and re-render until the output is correct.
-
-The expected output for the basic example above would look like:
+For the basic example, check the ConfigMap name and the value in `data.config`.
 
 ```yaml
 ---
@@ -258,21 +339,19 @@ data:
   config: "hello world"
 ```
 
-## Step 6: Test via Kaster
-
-The only valid way to test a glyph is through kaster, because kaster is the dispatcher that calls your template at runtime. Do not test templates in isolation -- always render them through kaster to verify the full dispatch chain.
+Once those fields match, save the reviewed render to
+`tests/snapshots/glyphs/my-glyph/basic.yaml.snap` in Runik.
 
 ```bash
-make glyphs my-glyph
+make snapshot glyph my-glyph basic.yaml
 ```
 
-This target runs kaster with each example file in `charts/glyphs/my-glyph/examples/` and compares the output against saved snapshots.
+## Step 6: Test via Kaster
 
-You can also render manually for debugging:
+Compare the examples in `charts/glyphs/my-glyph/examples/` with their saved snapshots.
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/my-glyph/examples/basic.yaml
+make test glyph my-glyph
 ```
 
 If the output is empty, check:
@@ -285,23 +364,26 @@ If the output is empty, check:
 ## Step 7: Distribute the Glyph
 
 Once the glyph renders and passes tests locally in `charts/glyphs/`, commit and
-push it there and merge its reviewed PR into `glyphs/upstream`. That merge is
-the release event. The operational `glyphs-release` Tarot reading:
+push it there and merge its reviewed PR into `glyphs/upstream`. Glyphs registers
+`.argo/synchronize.yaml` for pushes to `upstream` in its
+[workflow configuration](../../charts/glyphs/.argo/workflowConfig.yaml).
+The synchronization workflow runs the following steps.
 
-1. Locks Glyph releases so cascades cannot overlap.
+1. Serializes Glyph synchronization so cascades cannot overlap.
 2. Checks out the merged Glyph commit in all five consumers, regenerates the
    aggregate snapshots, and runs `make test all` against the prospective tree.
-3. Creates an audit PR in each direct consumer and force-merges it using the
-   release identity after the aggregate test succeeds.
+3. Creates an audit PR in each direct consumer, waits for its exact-SHA
+   `pr-gate-<component>` status, and merges normally as `ci-bot`.
 4. Re-clones Runik at the latest `upstream`, pins Glyphs plus all five merged
-   consumers, re-runs the complete test suite, and creates and force-merges the
-   final aggregate PR.
+   consumers, re-runs the complete test suite, and merges the final aggregate
+   PR after its `Runik tests / test (pull_request)` check succeeds.
 
-No approval after the original Glyph PR is part of the normal release path.
+No approval after the original Glyph PR is part of the normal synchronization
+path.
 Every generated branch and PR is keyed by the approved Glyph commit SHA, so a
 retry is idempotent and resumes from the first consumer that is not yet pinned.
 
-If the release reading is unavailable, use this recovery checklist:
+If the synchronization Workflow is unavailable, use this recovery checklist:
 
 1. Bump the `charts/` submodule in all five direct consumers:
    - `charts/kaster/`
@@ -312,14 +394,20 @@ If the release reading is unavailable, use this recovery checklist:
 2. Validate both dispatch paths: `glyphs:` through kaster and top-level glyph
    keys through summon. Render the remaining consumers to detect helper or
    template compatibility problems.
-3. Commit, push and merge each consumer bump. This is normally done by Tarot.
+3. Commit, push and merge each consumer bump. This is normally done by the Glyphs repository Workflow.
 4. In the top-level Runik repository, bump `charts/glyphs/` plus all five
    consumer submodules. Merge this aggregator change last. This is also
-   normally done by Tarot.
+   normally done by the Glyphs repository Workflow.
 
 Do not omit microspell: it consumes `glyphs.git` directly through
 `charts/trinkets/microspell/charts`, even though it reuses many summon
 templates by name.
+
+After synchronization completes, public publication remains an explicit human
+decision. Publish a SemVer Forgejo Release from the current `glyphs/upstream`
+head; a raw tag push is insufficient. When consumers are part of the same
+release set, wait for Glyphs to reach GitHub before publishing them. See
+[AGENTS.md](../../AGENTS.md#9-forgejo-first-development-and-publication).
 
 ## Step 8: Register in Book index.yaml
 
@@ -382,6 +470,7 @@ Required Configuration:
 - definition.name: resource name (auto-injected by kaster)
 
 Optional Configuration:
+- definition.namePrefix / definition.nameSuffix: affixes for glyph resource names
 - definition.image: Redis image (default: redis:7-alpine)
 - definition.replicas: number of replicas (default: 1)
 - definition.port: Redis port (default: 6379)
@@ -397,6 +486,17 @@ Usage: {{- include "redis.standalone" (list $root $glyph) }}
 {{- define "redis.standalone" -}}
 {{- $root := index . 0 -}}
 {{- $definition := index . 1 -}}
+{{- $name := include "common.glyph.name" (dict "root" $root "glyph" $definition) -}}
+{{- $dataName := include "common.glyph.name" (dict "root" $root "glyph" $definition
+    "options" (dict "suffix" "-data")) -}}
+{{- $selector := dict "app.kubernetes.io/name" $name "app.kubernetes.io/component" "redis" -}}
+{{- $labels := include "common.all.labels" $root | fromYaml -}}
+{{- $labels = mergeOverwrite $labels (default dict $definition.labels) $selector -}}
+{{- $metadata := dict "labels" $labels -}}
+{{- with $definition.namespace }}{{- $_ := set $metadata "namespace" . -}}{{- end -}}
+{{- with (include "common.annotations.map" (list $root (default dict $definition.annotations) dict) | fromJson) -}}
+  {{- $_ := set $metadata "annotations" . -}}
+{{- end -}}
 {{- $image := default "redis:7-alpine" $definition.image -}}
 {{- $port := default 6379 $definition.port -}}
 {{- $replicas := default 1 $definition.replicas -}}
@@ -406,31 +506,17 @@ Usage: {{- include "redis.standalone" (list $root $glyph) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $definition.name }}
-  {{- if $definition.namespace }}
-  namespace: {{ $definition.namespace }}
-  {{- end }}
-  labels:
-    {{- include "common.labels" $root | nindent 4 }}
-    app.kubernetes.io/component: redis
-    {{- with $definition.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- with $definition.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  name: {{ $name | quote }}
+  {{- toYaml $metadata | nindent 2 }}
 spec:
   replicas: {{ $replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ $definition.name }}
-      app.kubernetes.io/component: redis
+      {{- toYaml $selector | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ $definition.name }}
-        app.kubernetes.io/component: redis
+        {{- toYaml $labels | nindent 8 }}
     spec:
       containers:
         - name: redis
@@ -465,23 +551,17 @@ spec:
       volumes:
         - name: redis-data
           persistentVolumeClaim:
-            claimName: {{ $definition.name }}-data
+            claimName: {{ $dataName | quote }}
       {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $definition.name }}
-  {{- if $definition.namespace }}
-  namespace: {{ $definition.namespace }}
-  {{- end }}
-  labels:
-    {{- include "common.labels" $root | nindent 4 }}
-    app.kubernetes.io/component: redis
+  name: {{ $name | quote }}
+  {{- toYaml $metadata | nindent 2 }}
 spec:
   selector:
-    app.kubernetes.io/name: {{ $definition.name }}
-    app.kubernetes.io/component: redis
+    {{- toYaml $selector | nindent 4 }}
   ports:
     - port: {{ $port }}
       targetPort: {{ $port }}
@@ -492,13 +572,8 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ $definition.name }}-data
-  {{- if $definition.namespace }}
-  namespace: {{ $definition.namespace }}
-  {{- end }}
-  labels:
-    {{- include "common.labels" $root | nindent 4 }}
-    app.kubernetes.io/component: redis
+  name: {{ $dataName | quote }}
+  {{- toYaml $metadata | nindent 2 }}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -509,6 +584,7 @@ spec:
   storageClassName: {{ . }}
   {{- end }}
 {{- end }}
+{{- printf "\n" -}}
 {{- end -}}
 ```
 
@@ -548,6 +624,8 @@ glyphs:
   redis:
     data-store:
       type: standalone
+      namePrefix: app-
+      nameSuffix: -cache
       image: redis:7.2-alpine
       port: 6379
       maxMemory: "1gb"
@@ -565,74 +643,29 @@ glyphs:
           memory: 2Gi
 ```
 
+This example names the Deployment and Service `app-data-store-cache`. The PVC
+is `app-data-store-cache-data`, matching the Deployment's `claimName`.
+
 ### 5. Test Through Kaster
 
 Render the basic example:
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/redis/examples/basic-standalone.yaml
+make render glyph redis basic-standalone.yaml
 ```
 
-Expected output:
+Both the Deployment and Service are named `session-cache`. Their selectors
+match the same two pod labels:
 
 ```yaml
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: session-cache
-  labels:
-    app.kubernetes.io/component: redis
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: session-cache
-      app.kubernetes.io/component: redis
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: session-cache
-        app.kubernetes.io/component: redis
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          ports:
-            - containerPort: 6379
-              name: redis
-              protocol: TCP
-          args:
-            - redis-server
-            - --maxmemory
-            - 128mb
-            - --maxmemory-policy
-            - allkeys-lru
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 250m
-              memory: 512Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: session-cache
-  labels:
-    app.kubernetes.io/component: redis
-spec:
-  selector:
-    app.kubernetes.io/name: session-cache
-    app.kubernetes.io/component: redis
-  ports:
-    - port: 6379
-      targetPort: 6379
-      name: redis
-      protocol: TCP
+app.kubernetes.io/name: session-cache
+app.kubernetes.io/component: redis
 ```
+
+The name comes from the glyph entry and the component identifies Redis.
+Both stay stable when a release's version, annotations or custom labels change.
+The resources and pod template also carry the common metadata labels. With
+`persistent-redis.yaml`, the Deployment volume references the PVC `data-store-data`.
 
 ### 6. Use in a Spell
 
@@ -641,7 +674,7 @@ Once tested, use the glyph in any spell:
 ```yaml
 # With a summon workload (glyph keys at top level)
 name: api-service
-image: myorg/api:v2.0
+image: {name: myorg/api, tag: v2.0}
 service:
   enabled: true
 
@@ -710,72 +743,41 @@ glyphs:
 At this point, there is no template yet. Running kaster with this example produces no output or an error -- the test is red.
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/redis/examples/basic-standalone.yaml
+make render glyph redis basic-standalone.yaml
 # Error or empty output: template "redis.standalone" not defined
 ```
 
 ### Green: Implement the Template
 
-Create the template that satisfies the example:
-
-```go
-{{- define "redis.standalone" -}}
-{{- $root := index . 0 -}}
-{{- $definition := index . 1 -}}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ $definition.name }}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: {{ $definition.name }}
-  template:
-    metadata:
-      labels:
-        app: {{ $definition.name }}
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          args:
-            - redis-server
-            - --maxmemory
-            - {{ default "256mb" $definition.maxMemory }}
-{{- end -}}
-```
+Use the [Redis template above](#3-create-the-template) to render the
+Deployment and Service with the same resource names and selectors as the
+completed glyph.
 
 Now render again:
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/redis/examples/basic-standalone.yaml
+make render glyph redis basic-standalone.yaml
 ```
 
 The output contains a Deployment -- the test is green.
 
 ### Refactor: Generate Snapshot and Iterate
 
-Save the output as the snapshot baseline:
+After reviewing the Deployment, save the baseline in Runik at
+`tests/snapshots/glyphs/redis/basic-standalone.yaml.snap`.
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/redis/examples/basic-standalone.yaml \
-  > charts/glyphs/redis/examples/basic-standalone.snapshot.yaml
+make snapshot glyph redis basic-standalone.yaml
 ```
 
-Now iterate on the template. Add labels, Service, PVC, resource defaults, and other features. After each change, re-render and compare against the snapshot:
+After refactoring the template, compare the render with the reviewed snapshot.
 
 ```bash
-helm template test-release ./charts/kaster \
-  --values charts/glyphs/redis/examples/basic-standalone.yaml \
-  | diff - charts/glyphs/redis/examples/basic-standalone.snapshot.yaml
+make test glyph redis basic-standalone.yaml
 ```
 
-When the output matches your expectations, update the snapshot. Run `make glyphs redis` to validate all examples against their snapshots.
+Update the affected snapshot after reviewing an intentional change. Run
+`make test glyph redis` to compare all Redis examples with their baselines.
 
 ### Add More Examples
 
@@ -845,12 +847,12 @@ Use Go template `default` for optional fields rather than requiring them:
 Use `with` for optional map/list fields and `if` for boolean toggles:
 
 ```go
-{{- with $definition.annotations }}
+{{- with (include "common.annotations.map" (list $root (default dict $definition.annotations) dict) | fromJson) }}
 annotations:
-  {{- toYaml . | nindent 4 }}
+  {{- toYaml . | nindent 2 }}
 {{- end }}
 
-{{- if $definition.persistence.enabled }}
+{{- if and $definition.persistence $definition.persistence.enabled }}
 volumeMounts:
   - name: data
     mountPath: /data
